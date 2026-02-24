@@ -1,0 +1,33 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+.trae/
+
+# Node
+**/node_modules/
+**/dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Java / Maven
+**/target/
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Logs / temp
+*.log
+*.tmp
+*.swp
+*.swo
+
+# Local env
+**/.env.local
+**/.env.*.local
+
+# Backup git folder renamed for monorepo migration
+**/.git_backup_for_monorepo_20260224/

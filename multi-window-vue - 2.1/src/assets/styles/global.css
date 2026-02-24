@@ -1,0 +1,256 @@
+/* Global Admin Layout Styles */
+
+/* 页面主容器 */
+.admin-page-container {
+  padding: 20px;
+  background-color: var(--color-bg, #f5f7fb);
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  box-sizing: border-box;
+  overflow: hidden; /* 防止窗口滚动 */
+}
+
+/* 筛选/搜索区域卡片 */
+.admin-search-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* 表格/内容区域卡片 */
+.admin-content-card {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden; /* 确保表格滚动正常 */
+}
+
+/* 表格头部 (标题 + 操作按钮) */
+.admin-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-shrink: 0;
+}
+
+.admin-table-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 表格头部右侧操作区 */
+.admin-header-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+/* 统一表格样式调整 */
+.admin-table {
+  flex: 1;
+  width: 100%;
+  min-height: 0; /* 关键：允许 flex 子项在主轴方向收缩 */
+}
+
+/* 表格区域包装，确保分页区域始终可见 */
+.admin-table-wrapper {
+  flex: 1;
+  min-height: 0;
+}
+
+.admin-table-wrapper .el-table {
+  height: 100%;
+}
+
+/* 分页区域 */
+.admin-pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap; /* 允许换行，防止在小屏幕下内容被截断 */
+  flex-shrink: 0;
+  padding-bottom: 2px; /* 防止底部阴影被切 */
+  position: sticky;
+  bottom: 0;
+  background: #fff;
+  padding-top: 8px;
+  z-index: 2;
+}
+
+/* 修复 Element Plus 分页输入框样式 */
+.admin-pagination .el-pagination__jump {
+  margin-left: 16px !important;
+}
+
+.admin-pagination .el-pagination__sizes,
+.admin-pagination .el-pagination__jump {
+  display: inline-flex !important;
+  align-items: center;
+  visibility: visible !important;
+}
+
+/* 状态标签通用样式 (可选) */
+.status-tag-success {
+  color: #67c23a;
+}
+.status-tag-warning {
+  color: #e6a23c;
+}
+.status-tag-danger {
+  color: #f56c6c;
+}
+
+/* Tab页签样式优化 (针对InfoCenter) */
+.admin-tabs .el-tabs__header {
+  margin-bottom: 16px;
+  background-color: #fff;
+  padding: 10px 20px 0;
+  border-radius: 8px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.admin-tabs .el-tabs__content {
+  background-color: transparent;
+  padding: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+/* 去除默认的nav-wrap下划线，让它看起来更像一个独立的卡片导航 */
+.admin-tabs .el-tabs__nav-wrap::after {
+  height: 0;
+}
+
+/* ============================================
+   响应式断点统一（仅影响小屏）
+   ============================================ */
+@media (max-width: 1200px) {
+  .admin-page-container {
+    padding: 16px;
+    gap: 14px;
+  }
+}
+
+@media (max-width: 992px) {
+  .admin-page-container {
+    padding: 14px;
+    gap: 12px;
+    height: auto !important;
+    min-height: 100% !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .admin-search-card,
+  .admin-content-card {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .admin-content-card {
+    overflow: visible !important;
+  }
+
+  .admin-search-card .el-row {
+    row-gap: 12px;
+  }
+
+  .admin-search-card [class*="el-col-"] {
+    max-width: 100%;
+    flex: 0 0 100%;
+  }
+
+  .admin-table-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .admin-header-actions {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .admin-table-wrapper {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-content-card--fixed-pagination {
+    display: flex !important;
+    flex-direction: column !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+  }
+
+  .admin-content-card--fixed-pagination .admin-table-wrapper {
+    flex: 1 1 auto;
+    overflow: auto !important;
+    max-height: none !important;
+    min-height: 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-pagination {
+    position: static;
+    justify-content: center;
+    padding-top: 10px;
+  }
+
+  .admin-content-card--fixed-pagination .admin-pagination {
+    position: static !important;
+    bottom: auto !important;
+  }
+
+  .admin-pagination .el-pagination {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 768px) {
+  .admin-page-container {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .admin-search-card,
+  .admin-content-card {
+    padding: 12px;
+  }
+
+  .admin-table-title {
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-page-container {
+    padding: 10px;
+  }
+
+  .el-dialog {
+    width: calc(100vw - 20px) !important;
+    margin-top: 8vh !important;
+  }
+
+  .el-dialog__body {
+    padding: 14px;
+  }
+}
