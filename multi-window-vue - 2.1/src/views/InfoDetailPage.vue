@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InfoDetail from '../components/lostFind/InfoDetail.vue';
 import CommentSection from '../components/lostFind/CommentSection.vue';
@@ -40,8 +40,8 @@ export default {
     };
     
     // 直接获取路由参数（无需等待mounted）
-    id.value = route.params.id;
-    type.value = route.params.type || 'lost';
+    id.value = String(route.params.id || '');
+    type.value = route.params.type === 'find' ? 'find' : 'lost';
     
     return {
       id,

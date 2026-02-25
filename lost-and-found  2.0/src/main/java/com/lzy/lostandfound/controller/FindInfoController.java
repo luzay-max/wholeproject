@@ -92,7 +92,7 @@ public class FindInfoController {
 
             return Result.success("发布成功，等待审核");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("发布失败，请稍后重试");
         }
     }
@@ -150,7 +150,7 @@ public class FindInfoController {
                     "total", pageInfo.getTotal()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取列表失败");
         }
     }
@@ -187,7 +187,7 @@ public class FindInfoController {
 
             return Result.success(findInfo);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取详情失败");
         }
     }
@@ -205,7 +205,7 @@ public class FindInfoController {
 
             return Result.success(findInfoService.list(queryWrapper));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取热门信息失败");
         }
     }
@@ -270,7 +270,7 @@ public class FindInfoController {
             findInfoService.updateById(findInfo);
             return Result.success("更新成功，等待审核");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新失败");
         }
     }
@@ -301,7 +301,7 @@ public class FindInfoController {
             findInfoService.removeById(id);
             return Result.success("删除成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除失败");
         }
     }
@@ -330,7 +330,7 @@ public class FindInfoController {
                     "total", pageInfo.getTotal()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取用户发布信息失败");
         }
     }
@@ -370,8 +370,9 @@ public class FindInfoController {
 
             return Result.success("更新成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新状态失败");
         }
     }
 }
+

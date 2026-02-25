@@ -8,6 +8,7 @@ import com.lzy.lostandfound.entity.HonorPeriodItem;
 import com.lzy.lostandfound.entity.User;
 import com.lzy.lostandfound.mapper.FindInfoMapper;
 import com.lzy.lostandfound.mapper.UserMapper;
+import com.lzy.lostandfound.utils.LogUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
@@ -64,8 +65,8 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         LocalDateTime endDateTime = weekEnd.atTime(LocalTime.MAX);
 
         String typeLabel = type == 0 ? "本周" : (type == 1 ? "上周" : "自定义(" + startDate + "~" + endDate + ")");
-        System.out.println("=== 生成" + typeLabel + "光荣榜 ===");
-        System.out.println("统计周期: " + startDateTime + " ~ " + endDateTime);
+        LogUtil.info("=== 生成" + typeLabel + "光荣榜 ===");
+        LogUtil.info("统计周期: " + startDateTime + " ~ " + endDateTime);
 
         // 2. 统计每个用户完成的招领数量
         String sql = """
@@ -83,7 +84,7 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         List<Map<String, Object>> results = jdbcTemplate.queryForList(sql,
             startDateTime, endDateTime);
 
-        System.out.println("找到 " + results.size() + " 位用户有完成的招领记录");
+        LogUtil.info("找到 " + results.size() + " 位用户有完成的招领记录");
 
         // 3. 查询所有用户信息（用于获取用户名、姓名、头像等）
         List<User> allUsers = userMapper.selectList(new LambdaQueryWrapper<>());
@@ -106,7 +107,7 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         period.setUpdatedAt(LocalDateTime.now());
 
         honorPeriodService.save(period);
-        System.out.println("创建周期记录成功: " + periodId);
+        LogUtil.info("创建周期记录成功: " + periodId);
 
         // 5. 创建周期明细记录
         int rank = 1;
@@ -150,7 +151,7 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
             honorPeriodItemService.save(item);
         }
 
-        System.out.println("创建 " + (rank - 1) + " 条明细记录");
+        LogUtil.info("创建 " + (rank - 1) + " 条明细记录");
 
         // 返回生成结果
         HonorBoard result = new HonorBoard();
@@ -200,3 +201,4 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         public void setTypeLabel(String typeLabel) { this.typeLabel = typeLabel; }
     }
 }
+

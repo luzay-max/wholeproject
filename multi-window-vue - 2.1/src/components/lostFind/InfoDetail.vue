@@ -201,7 +201,7 @@ export default {
     Clock, ZoomIn, Location, Calendar, Document, User, Phone, Message, Check
   },
   props: {
-    infoId: { type: [String, Number], required: true },
+    infoId: { type: String, required: true },
     infoType: {
       type: String,
       default: 'lost',

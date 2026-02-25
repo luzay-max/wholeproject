@@ -16,10 +16,16 @@ const shouldNotifyAuth = () => {
 };
 
 const needGlobalErrorToast = (config) => config?.showErrorMessage === true;
+const BASE_API = import.meta.env.VITE_APP_BASE_API || '/api';
+
+const redirectToLogin = () => {
+  removeToken();
+  window.location.href = '/login';
+};
 
 // 创建axios实例
 const service = axios.create({
-  baseURL: import.meta.env.VITE_APP_BASE_API || '/api',
+  baseURL: BASE_API,
   timeout: 10000
 });
 
@@ -44,7 +50,6 @@ service.interceptors.request.use(
     return config;
   },
   error => {
-    console.error('请求错误:', error);
     return Promise.reject(error);
   }
 );
@@ -67,8 +72,8 @@ service.interceptors.response.use(
             if (!isRefreshing) {
               isRefreshing = true;
               // 调用刷新 Token 接口
-              return axios.post((import.meta.env.VITE_APP_BASE_API || '/api') + '/user/refresh-token', {
-                refreshToken: refreshToken
+              return axios.post(`${BASE_API}/auth/refresh`, null, {
+                params: { refreshToken }
               }).then(res => {
                 if (res.data.code === 0) {
                   const newToken = res.data.data.token;
@@ -82,13 +87,11 @@ service.interceptors.response.use(
                   return service(originalRequest);
                 } else {
                   // 刷新失败，清除 Token 并跳转登录
-                  removeToken();
-                  window.location.href = '/login';
+                  redirectToLogin();
                   return Promise.reject(new Error('刷新 Token 失败'));
                 }
               }).catch(err => {
-                 removeToken();
-                 window.location.href = '/login';
+                 redirectToLogin();
                  return Promise.reject(err);
               }).finally(() => {
                 isRefreshing = false;
@@ -111,12 +114,10 @@ service.interceptors.response.use(
             cancelButtonText: '取消',
             type: 'warning'
           }).then(() => {
-            removeToken();
-            window.location.href = '/login';
+            redirectToLogin();
           });
         } else {
-          removeToken();
-          window.location.href = '/login';
+          redirectToLogin();
         }
       } else {
         if (needGlobalErrorToast(response.config)) {
@@ -129,8 +130,6 @@ service.interceptors.response.use(
     return res;
   },
   error => {
-    console.error('响应错误:', error);
-    
     let message = '网络异常，请稍后重试';
     if (error.response) {
       switch (error.response.status) {
@@ -141,8 +140,7 @@ service.interceptors.response.use(
              // ... (复用上面的刷新逻辑，略显复杂，这里简化处理，通常后端返回 401 status code 或 body code 401)
              // 简单起见，如果 status 401 也走统一处理
              message = '未授权，请重新登录';
-             removeToken();
-             window.location.href = '/login';
+             redirectToLogin();
           }
           break;
         case 403:

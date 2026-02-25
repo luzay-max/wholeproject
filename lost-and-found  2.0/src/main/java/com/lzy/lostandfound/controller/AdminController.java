@@ -120,7 +120,7 @@ public class AdminController {
             data.put("total", pageData.getTotal());
             return Result.success(data);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取光荣榜周期列表失败");
         }
     }
@@ -163,7 +163,7 @@ public class AdminController {
             board.setList(list);
             return Result.success(board);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取光荣榜详情失败");
         }
     }
@@ -187,7 +187,7 @@ public class AdminController {
             }
             return Result.success("标记成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("标记已发送失败");
         }
     }
@@ -211,7 +211,7 @@ public class AdminController {
             }
             return Result.success("标记成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("标记已颁奖失败");
         }
     }
@@ -236,7 +236,7 @@ public class AdminController {
             honorPeriodService.updateById(existing);
             return Result.success("更新光荣榜周期成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新光荣榜周期失败");
         }
     }
@@ -268,7 +268,7 @@ public class AdminController {
             }
             return Result.success(result);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("搜索候选人失败");
         }
     }
@@ -337,7 +337,7 @@ public class AdminController {
             
             return Result.success("批量添加成功，新增 " + newItems.size() + " 条记录");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量添加失败: " + e.getMessage());
         }
     }
@@ -365,7 +365,7 @@ public class AdminController {
                 return Result.error("添加榜单成员失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("添加榜单成员失败: " + e.getMessage());
         }
     }
@@ -398,7 +398,7 @@ public class AdminController {
                 return Result.error("更新榜单成员失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新榜单成员失败: " + e.getMessage());
         }
     }
@@ -413,7 +413,7 @@ public class AdminController {
                 return Result.error("删除榜单成员失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除榜单成员失败: " + e.getMessage());
         }
     }
@@ -428,7 +428,7 @@ public class AdminController {
             }
             return Result.error("榜单成员不存在或无需恢复");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("恢复榜单成员失败: " + e.getMessage());
         }
     }
@@ -460,7 +460,7 @@ public class AdminController {
                 return Result.error("删除光荣榜失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除光荣榜失败：" + e.getMessage());
         }
     }
@@ -492,7 +492,7 @@ public class AdminController {
 
             return Result.error("光荣榜周期不存在或无需恢复");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("恢复光荣榜失败: " + e.getMessage());
         }
     }
@@ -611,7 +611,7 @@ public class AdminController {
                     "total", total
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取审核列表失败");
         }
     }
@@ -782,7 +782,7 @@ public class AdminController {
             }
             return Result.success("批量通过成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量通过失败");
         }
     }
@@ -872,7 +872,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取用户列表失败");
         }
     }
@@ -915,7 +915,7 @@ public class AdminController {
             
             return Result.success("角色更新成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("角色更新失败");
         }
     }
@@ -997,7 +997,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取用户列表失败");
         }
     }
@@ -1055,7 +1055,7 @@ public class AdminController {
                 return Result.error("新增用户失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("新增用户失败: " + e.getMessage());
         }
     }
@@ -1127,7 +1127,7 @@ public class AdminController {
                 return Result.error("更新用户失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新用户失败");
         }
     }
@@ -1146,7 +1146,7 @@ public class AdminController {
                 return Result.error("删除用户失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除用户失败");
         }
     }
@@ -1177,7 +1177,7 @@ public class AdminController {
                 return Result.error("密码重置失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("密码重置失败: " + e.getMessage());
         }
     }
@@ -1201,7 +1201,7 @@ public class AdminController {
                 return Result.error("批量删除用户失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除用户失败");
         }
     }
@@ -1261,7 +1261,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取招领信息列表失败");
         }
     }
@@ -1321,7 +1321,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取失物信息列表失败");
         }
     }
@@ -1386,7 +1386,7 @@ public class AdminController {
             
             return Result.success(statistics);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取统计数据失败");
         }
     }
@@ -1454,7 +1454,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取评论列表失败");
         }
     }
@@ -1537,7 +1537,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取评论列表失败");
         }
     }
@@ -1556,7 +1556,7 @@ public class AdminController {
                 return Result.error("评论不存在或已被删除");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除评论失败");
         }
     }
@@ -1575,7 +1575,7 @@ public class AdminController {
                 return Result.error("评论不存在或已被删除");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除评论失败");
         }
     }
@@ -1590,7 +1590,7 @@ public class AdminController {
             }
             return Result.error("评论不存在或无需恢复");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("恢复评论失败");
         }
     }
@@ -1607,7 +1607,7 @@ public class AdminController {
             }
             return Result.success(comment);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取评论详情失败");
         }
     }
@@ -1633,7 +1633,7 @@ public class AdminController {
                 return Result.error("新增评论失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("新增评论失败");
         }
     }
@@ -1664,7 +1664,7 @@ public class AdminController {
                 return Result.error("更新评论失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新评论失败");
         }
     }
@@ -1688,7 +1688,7 @@ public class AdminController {
                 return Result.error("批量删除失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除失败");
         }
     }
@@ -1708,7 +1708,7 @@ public class AdminController {
             }
             return Result.error("没有可恢复的评论");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量恢复失败");
         }
     }
@@ -1760,7 +1760,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取活动记录列表失败");
         }
     }
@@ -1777,7 +1777,7 @@ public class AdminController {
             }
             return Result.success(activity);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取活动记录详情失败");
         }
     }
@@ -1798,7 +1798,7 @@ public class AdminController {
                 return Result.error("新增活动记录失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("新增活动记录失败");
         }
     }
@@ -1825,7 +1825,7 @@ public class AdminController {
                 return Result.error("更新活动记录失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新活动记录失败");
         }
     }
@@ -1843,7 +1843,7 @@ public class AdminController {
                 return Result.error("活动记录不存在或已被删除");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除活动记录失败");
         }
     }
@@ -1866,7 +1866,7 @@ public class AdminController {
                 return Result.error("批量删除失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除失败");
         }
     }
@@ -1881,7 +1881,7 @@ public class AdminController {
             }
             return Result.error("活动记录不存在或无需恢复");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("恢复活动记录失败");
         }
     }
@@ -1901,7 +1901,7 @@ public class AdminController {
             }
             return Result.error("没有可恢复的活动记录");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量恢复失败");
         }
     }
@@ -1961,7 +1961,7 @@ public class AdminController {
                     "pages", resultPage.getPages()
             ));
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取活动记录列表失败");
         }
     }
@@ -2007,7 +2007,7 @@ public class AdminController {
             
             return Result.success("角色更新成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("角色更新失败");
         }
     }
@@ -2068,7 +2068,7 @@ public class AdminController {
                 return Result.error("用户状态更新失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新用户状态失败");
         }
     }
@@ -2122,7 +2122,7 @@ public class AdminController {
                 return Result.error("新增失物信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("新增失物信息失败");
         }
     }
@@ -2152,7 +2152,7 @@ public class AdminController {
                 return Result.error("更新失物信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新失物信息失败");
         }
     }
@@ -2189,7 +2189,7 @@ public class AdminController {
             
             return Result.success("失物状态更新成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("失物状态更新失败");
         }
     }
@@ -2243,7 +2243,7 @@ public class AdminController {
                 return Result.error("新增招领信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("新增招领信息失败");
         }
     }
@@ -2273,7 +2273,7 @@ public class AdminController {
                 return Result.error("更新招领信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新招领信息失败");
         }
     }
@@ -2310,7 +2310,7 @@ public class AdminController {
             
             return Result.success("招领状态更新成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("招领状态更新失败");
         }
     }
@@ -2337,7 +2337,7 @@ public class AdminController {
                 return Result.error("失物信息删除失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除失物信息失败");
         }
     }
@@ -2361,7 +2361,7 @@ public class AdminController {
                 return Result.error("批量删除失物信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除失物信息失败");
         }
     }
@@ -2388,7 +2388,7 @@ public class AdminController {
                 return Result.error("招领信息删除失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除招领信息失败");
         }
     }
@@ -2412,7 +2412,7 @@ public class AdminController {
                 return Result.error("批量删除招领信息失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除招领信息失败");
         }
     }
@@ -2442,7 +2442,7 @@ public class AdminController {
             map.put("total", result.getTotal());
             return Result.success(map);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取白名单失败");
         }
     }
@@ -2465,7 +2465,7 @@ public class AdminController {
             studentWhitelistService.save(whitelist);
             return Result.success("添加成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("添加失败");
         }
     }
@@ -2498,7 +2498,7 @@ public class AdminController {
                 return Result.error("更新失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新失败");
         }
     }
@@ -2580,7 +2580,7 @@ public class AdminController {
             return Result.success("导入成功，共导入 " + successCount + " 条数据");
             
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("导入失败: " + e.getMessage());
         }
     }
@@ -2594,7 +2594,7 @@ public class AdminController {
             studentWhitelistService.removeById(id);
             return Result.success("删除成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("删除失败");
         }
     }
@@ -2612,7 +2612,7 @@ public class AdminController {
             studentWhitelistService.removeBatchByIds(ids);
             return Result.success("批量删除成功");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量删除失败");
         }
     }
@@ -2624,4 +2624,5 @@ public class AdminController {
 
 
 }
+
 

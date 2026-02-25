@@ -242,7 +242,8 @@ onBeforeUnmount(() => {
 .admin-layout {
   height: 100vh;
   width: 100vw;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   background: #f0f2f5;
 }
 
@@ -409,7 +410,8 @@ onBeforeUnmount(() => {
 .layout-main {
   flex: 1;
   padding: 0;
-  overflow: hidden;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
   min-height: 0;
   background: #f0f2f5;
 }

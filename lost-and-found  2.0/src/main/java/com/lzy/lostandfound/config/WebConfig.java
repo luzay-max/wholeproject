@@ -12,13 +12,16 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class WebConfig implements WebMvcConfigurer {
     @Autowired
     private LoginInterceptor loginInterceptor;
+
     @Override
-    public void  addInterceptors(InterceptorRegistry registry) {
-        //登录与注册放行
-        registry.addInterceptor(loginInterceptor).excludePathPatterns( "/api/auth/login",
+    public void addInterceptors(InterceptorRegistry registry) {
+        // 登录与注册放行
+        registry.addInterceptor(loginInterceptor).excludePathPatterns(
+                "/api/auth/login",
                 "/api/auth/register",
                 "/api/auth/captcha",
                 "/api/auth/check-username",
+                "/api/auth/refresh",
 
                 // 静态资源
                 "/static/**",
@@ -49,19 +52,12 @@ public class WebConfig implements WebMvcConfigurer {
                 "/v3/**",
                 "/swagger-ui/**",
                 "/api/v3/api-docs/**"
-
         );
-
-
-
     }
+
     @Override
     public void configurePathMatch(PathMatchConfigurer configurer) {
         // 仅对带有 @RestController 注解的类添加前缀
         configurer.addPathPrefix("/api", clazz -> clazz.isAnnotationPresent(RestController.class));
-
-
     }
-
-
 }

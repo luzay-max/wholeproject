@@ -76,8 +76,9 @@ public class HonorManageController {
 
             return Result.success(data);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("生成光荣榜失败: " + e.getMessage());
         }
     }
 }
+

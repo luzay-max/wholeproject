@@ -77,7 +77,7 @@ public class ActivitiesController {
 
             return Result.success(resultList);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("查询失败：" + e.getMessage());
         }
     }
@@ -99,8 +99,9 @@ public class ActivitiesController {
                 return Result.error("插入活动记录失败");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("插入异常：" + e.getMessage());
         }
     }
 }
+

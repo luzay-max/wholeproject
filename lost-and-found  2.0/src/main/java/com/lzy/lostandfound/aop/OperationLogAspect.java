@@ -24,10 +24,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.lang.reflect.Array;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -37,6 +39,8 @@ public class OperationLogAspect {
 
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)1\\d{10}(?!\\d)");
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+    private static final Pattern ID_CARD_PATTERN = Pattern.compile("(?<!\\d)(\\d{17}[\\dXx]|\\d{15})(?!\\d)");
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("(?i)(bearer\\s+)?[A-Za-z0-9\\-_=]{24,}\\.[A-Za-z0-9\\-_=]{24,}\\.?[A-Za-z0-9\\-_.+/=]{0,}");
     private static final int MAX_COLLECTION_ITEMS = 20;
     private static final int MAX_STRING_LENGTH = 300;
 
@@ -151,7 +155,11 @@ public class OperationLogAspect {
                 || lower.contains("email")
                 || lower.contains("contact")
                 || lower.contains("studentid")
+                || lower.contains("studentno")
                 || lower.contains("idcard")
+                || lower.contains("name")
+                || lower.contains("address")
+                || lower.contains("location")
                 || lower.contains("secret");
     }
 
@@ -159,7 +167,10 @@ public class OperationLogAspect {
         if (value == null) return null;
         if (value instanceof HttpServletRequest) return "HttpServletRequest";
         if (value instanceof MultipartFile file) return "MultipartFile(" + safeText(file.getOriginalFilename()) + ")";
+        if (value instanceof CharSequence text) return safeText(text.toString());
         if (value instanceof Number || value instanceof Boolean) return value;
+        if (value instanceof Enum<?> enumValue) return enumValue.name();
+        if (value instanceof Date || value instanceof LocalDateTime || value instanceof UUID) return String.valueOf(value);
 
         if (value instanceof Map<?, ?> src) {
             Map<String, Object> sanitized = new LinkedHashMap<>();
@@ -207,13 +218,16 @@ public class OperationLogAspect {
             return result;
         }
 
-        return safeText(String.valueOf(value));
+        // 自定义对象只记录类型，避免 toString() 泄露敏感字段
+        return "[OBJECT:" + value.getClass().getSimpleName() + "]";
     }
 
     private String safeText(String text) {
         if (text == null) return "";
         String masked = EMAIL_PATTERN.matcher(text).replaceAll("[已脱敏邮箱]");
         masked = PHONE_PATTERN.matcher(masked).replaceAll("[已脱敏手机号]");
+        masked = ID_CARD_PATTERN.matcher(masked).replaceAll("[已脱敏证件号]");
+        masked = TOKEN_PATTERN.matcher(masked).replaceAll("[已脱敏令牌]");
         if (masked.length() > MAX_STRING_LENGTH) {
             return masked.substring(0, MAX_STRING_LENGTH) + "...";
         }

@@ -272,14 +272,15 @@ export default {
     };
 
     const normalizeActivityRecord = (row = {}) => {
-      // 尝试解码可能的乱码数据
+      // 仅对 URI 编码格式尝试解码，避免二次编码破坏中文
       const decodeValue = (value) => {
         if (!value || typeof value !== 'string') return value;
         try {
-          // 尝试解码 UTF-8
-          return decodeURIComponent(escape(value));
+          if (/%[0-9A-Fa-f]{2}/.test(value)) {
+            return decodeURIComponent(value);
+          }
+          return value;
         } catch (e) {
-          // 如果解码失败，返回原始值
           return value;
         }
       };

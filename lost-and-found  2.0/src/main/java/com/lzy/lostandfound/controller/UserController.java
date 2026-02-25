@@ -312,7 +312,7 @@ public class UserController {
             userService.updateById(user);
             return Result.success("密码已更新");
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新密码失败");
         }
     }
@@ -375,7 +375,7 @@ public class UserController {
             currentUser.setPassword(null);
             return Result.success(currentUser);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("更新用户信息失败");
         }
     }
@@ -388,3 +388,4 @@ public class UserController {
     }
 
 }
+

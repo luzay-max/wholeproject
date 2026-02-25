@@ -64,7 +64,7 @@ public class HonorBoardController {
             HonorBoardVO vo = buildBoardVO(period, period.getTopN());
             return Result.success(vo);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取当前光荣榜失败");
         }
     }
@@ -90,7 +90,7 @@ public class HonorBoardController {
             HonorBoardVO vo = buildBoardVO(period, limit);
             return Result.success(vo);
         } catch (Exception e) {
-            e.printStackTrace();
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取历史光荣榜失败");
         }
     }
@@ -132,3 +132,4 @@ public class HonorBoardController {
         return vo;
     }
 }
+
