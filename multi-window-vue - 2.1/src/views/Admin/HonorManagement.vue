@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+<template>
   <div class="admin-page-container">
     <!-- 生成光荣榜对话框 -->
     <el-dialog
@@ -980,3 +980,5 @@ export default {
   }
 }
 </style>
+
+

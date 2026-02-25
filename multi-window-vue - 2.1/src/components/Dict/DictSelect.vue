@@ -14,7 +14,9 @@
       :value="item.value || item.dictValue"
       :disabled="item.status === '1'"
     >
-      <slot name="option" :item="item"></slot>
+      <slot name="option" :item="item">
+        <span>{{ item.label || item.dictLabel }}</span>
+      </slot>
     </el-option>
   </el-select>
 </template>

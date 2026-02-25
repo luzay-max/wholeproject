@@ -77,8 +77,8 @@
                 >
                   <template #option="{ item }">
                     <div class="option-content">
-                      <span class="option-icon">{{ getCategoryIcon(item.value) }}</span>
-                      <span class="option-label">{{ item.label }}</span>
+                      <span class="option-icon">{{ getCategoryIcon(item.value || item.dictValue) }}</span>
+                      <span class="option-label">{{ item.label || item.dictLabel }}</span>
                     </div>
                   </template>
                 </DictSelect>
@@ -150,12 +150,16 @@
                 size="small"
                 :loading="aiLoading"
                 @click="handleAiSuggest"
-                class="ai-btn"
+                :class="['ai-btn', { 'ai-btn--filled': Boolean((lostForm.description || '').trim()) }]"
               >
                 <el-icon><Lightning /></el-icon>
-                AI补全描述
+                {{ (lostForm.description || '').trim() ? 'AI优化描述' : 'AI补全描述' }}
               </el-button>
-              <span class="ai-hint">基于名称、类型、地点和图片生成客观描述</span>
+              <span class="ai-hint" :class="{ 'ai-hint--active': Boolean((lostForm.description || '').trim()) }">
+                {{ (lostForm.description || '').trim()
+                  ? '已填写描述，可预览AI建议后选择替换或追加'
+                  : '基于名称、类型、地点和图片生成客观描述' }}
+              </span>
             </div>
           </el-form-item>
 
@@ -232,6 +236,7 @@
               list-type="picture-card"
               :on-success="handleUploadSuccess"
               :on-error="handleUploadError"
+              :on-remove="handleRemove"
               :limit="9"
               multiple
               class="custom-upload"
@@ -246,10 +251,10 @@
                 <div class="upload-item">
                   <img :src="file.url" alt="物品图片" class="upload-image" />
                   <div class="upload-actions">
-                    <span class="upload-action" @click="handlePictureCardPreview(file)">
+                    <span class="upload-action preview-action" @click.stop="handlePictureCardPreview(file)">
                       <el-icon><ZoomIn /></el-icon>
                     </span>
-                    <span class="upload-action" @click="handleRemove(file)">
+                    <span class="upload-action delete-action" @click.stop="handleRemove(file)">
                       <el-icon><Delete /></el-icon>
                     </span>
                   </div>
@@ -298,7 +303,7 @@
 </template>
 
 <script>
-import { ref, reactive } from 'vue';
+import { h, ref, reactive } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   DocumentAdd, 
@@ -322,6 +327,7 @@ import {
 import { publishLost } from '../../api/lostApi';
 import { suggestDescription } from '../../api/aiApi';
 import { getToken } from '../../utils/authUtil';
+import { createClickGuard } from '../../utils/clickGuard';
 import DictSelect from '../Dict/DictSelect.vue';
 
 export default {
@@ -354,6 +360,7 @@ export default {
     const previewVisible = ref(false);
     const previewImage = ref('');
     const fileList = ref([]); // 添加文件列表响应式变量
+    const clickGuard = createClickGuard(800);
     const token = getToken();
 
     // 限制日期不能超过当前时间
@@ -387,18 +394,81 @@ export default {
       images: []
     });
 
+    const noiseWords = new Set([
+      'test', 'ceshi', 'asdf', 'qwer', 'zxcv', 'abc', 'abcd', 'abcde',
+      'qwerty', 'asdfgh', 'aaaa', 'bbbb', 'cccc', 'xxxx', 'yyyy', 'zzzz',
+      '1111', '1234', '12345', '123456', '6666', '9999'
+    ]);
+
+    const keyboardRows = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm', '1234567890'];
+
+    const normalizeText = (value) => (value || '').trim().replace(/\s+/g, ' ');
+    const compactText = (value) => normalizeText(value).replace(/\s+/g, '');
+
+    const isKeyboardNoise = (value) => {
+      if (!value || value.length < 4) return false;
+      for (const row of keyboardRows) {
+        const reversed = row.split('').reverse().join('');
+        for (let i = 0; i <= value.length - 4; i++) {
+          const segment = value.slice(i, i + 4);
+          if (row.includes(segment) || reversed.includes(segment)) return true;
+        }
+      }
+      return false;
+    };
+
+    const isLikelyNoise = (value) => {
+      const compact = compactText(value).toLowerCase();
+      if (!compact) return false;
+      if (noiseWords.has(compact)) return true;
+      if (/^(.)\1{2,}$/.test(compact)) return true;
+      if (/^(\d{2,})\1+$/.test(compact)) return true;
+      return isKeyboardNoise(compact);
+    };
+
+    const validateItemName = (rule, value, callback) => {
+      const normalized = normalizeText(value);
+      if (!normalized) return callback(new Error('请输入物品名称'));
+      if (normalized.length > 50) return callback(new Error('物品名称不能超过50个字符'));
+      if (!/[\u4e00-\u9fa5A-Za-z0-9]/.test(normalized)) {
+        return callback(new Error('物品名称格式不正确'));
+      }
+      if (/^\d+$/.test(compactText(normalized))) {
+        return callback(new Error('物品名称不能只填写数字'));
+      }
+      if (isLikelyNoise(normalized)) {
+        return callback(new Error('物品名称疑似无效，请填写真实名称'));
+      }
+      callback();
+    };
+
+    const validateLostLocation = (rule, value, callback) => {
+      const normalized = normalizeText(value);
+      if (!normalized) return callback(new Error('请输入丢失地点'));
+      if (normalized.length < 2) return callback(new Error('丢失地点至少填写2个字符'));
+      if (normalized.length > 100) return callback(new Error('丢失地点不能超过100个字符'));
+      if (!/[\u4e00-\u9fa5A-Za-z0-9]/.test(normalized)) {
+        return callback(new Error('丢失地点格式不正确'));
+      }
+      if (/^\d+$/.test(compactText(normalized))) {
+        return callback(new Error('丢失地点不能只填写数字'));
+      }
+      if (isLikelyNoise(normalized)) {
+        return callback(new Error('丢失地点疑似无效，请填写具体地点'));
+      }
+      callback();
+    };
+
     // 表单验证规则
     const rules = {
       name: [
-        { required: true, message: '请输入物品名称', trigger: 'blur' },
-        { min: 1, max: 50, message: '物品名称长度不能超过50个字', trigger: 'blur' }
+        { validator: validateItemName, trigger: 'blur' }
       ],
       type: [
         { required: true, message: '请选择物品类型', trigger: 'change' }
       ],
       location: [
-        { required: true, message: '请输入丢失地点', trigger: 'blur' },
-        { min: 1, max: 100, message: '丢失地点长度不能超过100个字', trigger: 'blur' }
+        { validator: validateLostLocation, trigger: 'blur' }
       ],
       lostTime: [
         { required: true, message: '请选择丢失时间', trigger: 'change' }
@@ -486,93 +556,186 @@ export default {
       const clean = (suggested || '').trim();
       if (!clean) {
         ElMessage.warning('AI未生成有效描述，请重试');
-        return;
+        return null;
       }
       const current = (lostForm.description || '').trim();
+
+      const dialogWidth = window.innerWidth <= 768 ? '92vw' : '720px';
+      const previewNode = h('div', {
+        class: 'ai-preview-content',
+        style: {
+          width: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '8px'
+        }
+      }, [
+        h('p', {
+          class: 'ai-preview-title',
+          style: {
+            margin: '0',
+            fontWeight: '600',
+            color: '#303133'
+          }
+        }, 'AI建议描述（确认后写入）'),
+        h(
+          'div',
+          {
+            class: 'ai-preview-text',
+            style: {
+              margin: '0',
+              padding: '10px 12px',
+              borderRadius: '8px',
+              border: '1px solid #dcdfe6',
+              background: '#f8fafc',
+              color: '#303133',
+              lineHeight: '1.65',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              overflowWrap: 'anywhere',
+              maxHeight: '36vh',
+              overflowY: 'auto',
+              overflowX: 'hidden'
+            }
+          },
+          clean
+        ),
+        current
+          ? h('p', {
+            class: 'ai-preview-tip',
+            style: {
+              margin: '0',
+              fontSize: '12px',
+              color: '#909399'
+            }
+          }, '当前已有描述：确定=替换，取消=追加，关闭=不应用')
+          : h('p', {
+            class: 'ai-preview-tip',
+            style: {
+              margin: '0',
+              fontSize: '12px',
+              color: '#909399'
+            }
+          }, '点击“应用到描述”后会写入描述框')
+      ]);
+
       if (!current) {
-        lostForm.description = clean;
-        return;
+        try {
+          await ElMessageBox.confirm(previewNode, 'AI描述建议', {
+            type: 'info',
+            confirmButtonText: '应用到描述',
+            cancelButtonText: '暂不使用',
+            distinguishCancelAndClose: true,
+            closeOnClickModal: false,
+            customClass: 'ai-preview-dialog',
+            width: dialogWidth
+          });
+          lostForm.description = clean;
+          return 'applied';
+        } catch {
+          return null;
+        }
       }
 
       try {
         await ElMessageBox.confirm(
-          '当前已填写描述，请选择如何应用AI建议',
+          previewNode,
           'AI描述建议',
           {
             type: 'info',
             confirmButtonText: '替换当前描述',
             cancelButtonText: '追加到现有描述',
             distinguishCancelAndClose: true,
-            closeOnClickModal: false
+            closeOnClickModal: false,
+            customClass: 'ai-preview-dialog',
+            width: dialogWidth
           }
         );
         lostForm.description = clean;
+        return 'replaced';
       } catch (action) {
         if (action === 'cancel') {
           lostForm.description = `${current}\n${clean}`;
+          return 'appended';
         }
+        return null;
       }
     };
 
     const handleAiSuggest = async () => {
-      if (aiLoading.value) return;
-      if (!lostForm.name || !lostForm.type || !lostForm.location) {
-        ElMessage.warning('请先填写物品名称、物品类型和地点');
-        return;
-      }
+      await clickGuard.run('lost-ai-suggest', async () => {
+        if (aiLoading.value) return;
+        if (!lostFormRef.value) return;
 
-      aiLoading.value = true;
-      try {
-        const payload = {
-          itemKind: 'lost',
-          name: lostForm.name,
-          type: lostForm.type,
-          location: lostForm.location,
-          timeValue: formatTimeValue(lostForm.lostTime),
-          imageUrls: normalizeImages(),
-          currentDescription: lostForm.description || '',
-          style: 'objective_concise'
-        };
-        const res = await suggestDescription(payload);
-        await applyAiDescription(res.data?.suggestedDescription || '');
-        if (res.data?.notice) {
-          ElMessage.warning(res.data.notice);
-        } else {
-          ElMessage.success('AI描述已生成');
+        let baseValid = true;
+        try {
+          await lostFormRef.value.validateField(['name', 'type', 'location']);
+        } catch {
+          baseValid = false;
         }
-      } catch (error) {
-        ElMessage.error(error?.message || 'AI补全失败，请稍后再试');
-      } finally {
-        aiLoading.value = false;
-      }
+        if (!baseValid) {
+          ElMessage.warning('请先修正物品名称、类型和地点后再使用AI');
+          return;
+        }
+
+        aiLoading.value = true;
+        try {
+          const payload = {
+            itemKind: 'lost',
+            name: lostForm.name,
+            type: lostForm.type,
+            location: lostForm.location,
+            timeValue: formatTimeValue(lostForm.lostTime),
+            imageUrls: normalizeImages(),
+            currentDescription: lostForm.description || '',
+            style: 'objective_concise'
+          };
+          const res = await suggestDescription(payload);
+          const applyResult = await applyAiDescription(res.data?.suggestedDescription || '');
+          if (res.data?.notice) {
+            ElMessage.warning(res.data.notice);
+          }
+          if (applyResult) {
+            ElMessage.success('AI建议已写入描述');
+          }
+        } catch (error) {
+          ElMessage.error(error?.message || 'AI补全失败，请稍后再试');
+        } finally {
+          aiLoading.value = false;
+        }
+      }, { cooldown: 1000 });
     };
 
     // Submit form
     const handleSubmit = async () => {
-      if (!lostFormRef.value) return;
+      await clickGuard.run('lost-submit', async () => {
+        if (!lostFormRef.value) return;
 
-      try {
-        await lostFormRef.value.validate();
-        loading.value = true;
-
-        const res = await publishLost(buildSubmitPayload());
-
-        ElMessage.success({
-          message: '失物信息发布成功，等待审核通过后将显示在列表中',
-          duration: 5000,
-          showClose: true
-        });
-        emit('submit-success', res.data);
-        emit('publish-success', res.data);
-
-        handleReset();
-      } catch (error) {
-        if (error !== false) {
-          ElMessage.error('发布失败：' + (error.message || '未知错误'));
+        const valid = await lostFormRef.value.validate().catch(() => false);
+        if (!valid) {
+          ElMessage.warning('表单未填写完整或存在错误，请检查后再提交');
+          return;
         }
-      } finally {
-        loading.value = false;
-      }
+
+        loading.value = true;
+        try {
+          const res = await publishLost(buildSubmitPayload());
+
+          ElMessage.success({
+            message: '失物信息发布成功，等待审核通过后将显示在列表中',
+            duration: 5000,
+            showClose: true
+          });
+          emit('submit-success', res.data);
+          emit('publish-success', res.data);
+
+          handleReset();
+        } catch (error) {
+          ElMessage.error('发布失败：' + (error?.message || '请稍后重试'));
+        } finally {
+          loading.value = false;
+        }
+      }, { cooldown: 1200 });
     };
 
     // 重置表单
@@ -703,14 +866,17 @@ export default {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  align-items: start;
 }
 
 .form-col {
   min-width: 0;
+  display: flex;
 }
 
 .form-item {
   margin-bottom: 10px;
+  width: 100%;
 }
 
 .form-label {
@@ -732,6 +898,25 @@ export default {
   width: 100%;
 }
 
+.form-item :deep(.el-form-item__label) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.form-item :deep(.el-form-item__content) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.form-item :deep(.el-form-item__error) {
+  position: static;
+  margin-top: 4px;
+  min-height: 18px;
+  line-height: 18px;
+}
+
 .custom-textarea :deep(.el-textarea__inner) {
   border-radius: 10px;
 }
@@ -748,9 +933,61 @@ export default {
   border-radius: 8px;
 }
 
+.ai-btn--filled {
+  color: #ffffff;
+  border-color: #f59e0b;
+  background: linear-gradient(135deg, #f59e0b 0%, #f97316 100%);
+  box-shadow: 0 8px 18px rgba(249, 115, 22, 0.28);
+}
+
+.ai-btn--filled:hover {
+  color: #ffffff;
+  border-color: #ea580c;
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
 .ai-hint {
   font-size: 12px;
   color: var(--color-text-tertiary);
+}
+
+.ai-hint--active {
+  color: #d97706;
+  font-weight: 600;
+}
+
+:deep(.ai-preview-dialog .el-message-box__message) {
+  width: 100%;
+}
+
+:deep(.ai-preview-content) {
+  width: 100%;
+}
+
+:deep(.ai-preview-title) {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+:deep(.ai-preview-text) {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-secondary);
+  background: #f8fafc;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+:deep(.ai-preview-tip) {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
 }
 
 .section-title {
@@ -795,8 +1032,11 @@ export default {
 }
 
 .upload-item {
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
+  width: 100%;
+  height: 100%;
 }
 
 .upload-image {
@@ -806,7 +1046,44 @@ export default {
 }
 
 .upload-actions {
-  background: rgba(15, 23, 42, 0.45);
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+  opacity: 1 !important;
+}
+
+.upload-action {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  border: 2px solid #ffffff;
+  background: rgba(15, 23, 42, 0.85);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, background-color 0.15s ease;
+}
+
+.upload-action .el-icon {
+  font-size: 16px;
+}
+
+.upload-action:hover {
+  transform: translateY(-1px);
+}
+
+.preview-action:hover {
+  background: rgba(37, 99, 235, 0.95);
+}
+
+.delete-action:hover {
+  background: rgba(220, 38, 38, 0.98);
 }
 
 .form-actions {

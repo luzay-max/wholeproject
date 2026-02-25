@@ -4,11 +4,12 @@ import com.lzy.lostandfound.anno.Log;
 import com.lzy.lostandfound.entity.OperationLog;
 import com.lzy.lostandfound.service.IOperationLogService;
 import com.lzy.lostandfound.service.IUserService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
 import com.lzy.lostandfound.vo.Tu;
-import com.lzy.lostandfound.utils.ThreadLocalUtil;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
@@ -18,15 +19,26 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.lang.reflect.Array;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
+import java.util.regex.Pattern;
 
+@Slf4j
 @Aspect
 @Component
 public class OperationLogAspect {
+
+    private static final Pattern PHONE_PATTERN = Pattern.compile("(?<!\\d)1\\d{10}(?!\\d)");
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}");
+    private static final int MAX_COLLECTION_ITEMS = 20;
+    private static final int MAX_STRING_LENGTH = 300;
 
     @Autowired
     private IOperationLogService operationLogService;
@@ -46,10 +58,7 @@ public class OperationLogAspect {
 
         Object ret = pjp.proceed();
         try {
-            System.out.println("DEBUG: Entering OperationLogAspect logic"); // Debug log
             String operationType = logAnno.value() != null ? logAnno.value() : "";
-            System.out.println("DEBUG: Operation Type: " + operationType); // Debug log
-            
             HttpServletRequest request = currentRequest();
             String ip = request != null ? request.getRemoteAddr() : "unknown";
 
@@ -80,11 +89,10 @@ public class OperationLogAspect {
                 }
             }
             if (uid == null && operatorId != null) {
-                try { 
-                    uid = Long.valueOf(operatorId); 
-                } catch (Exception e) { 
-                    System.err.println("DEBUG: Failed to parse operatorId: " + operatorId); // Debug log
-                    /* ignore */ 
+                try {
+                    uid = Long.valueOf(operatorId);
+                } catch (Exception ignored) {
+                    // ignore
                 }
             }
             ol.setUserId(uid);
@@ -100,23 +108,17 @@ public class OperationLogAspect {
             try {
                 // 如果userId为空，设置为-1（系统/未知），防止数据库报错
                 if (ol.getUserId() == null) {
-                    System.out.println("DEBUG: UserId is null, setting to -1"); // Debug log
                     ol.setUserId(-1L);
                 }
-                System.out.println("DEBUG: Saving OperationLog: " + ol); // Debug log
                 boolean saveSuccess = operationLogService.save(ol);
                 if (!saveSuccess) {
-                    System.err.println("OperationLog save failed for: " + operationType);
-                } else {
-                    System.out.println("DEBUG: OperationLog saved successfully"); // Debug log
+                    log.warn("操作日志保存失败，operationType={}", operationType);
                 }
             } catch (Exception e) {
-                System.err.println("Error saving operation log: " + e.getMessage());
-                e.printStackTrace();
+                log.warn("操作日志保存异常，operationType={}", operationType, e);
             }
         } catch (Exception e) {
-            System.err.println("DEBUG: Exception in Aspect: " + e.getMessage()); // Debug log
-            e.printStackTrace();
+            log.warn("记录操作日志异常", e);
         }
         return ret;
     }
@@ -132,10 +134,89 @@ public class OperationLogAspect {
         for (int i = 0; i < names.length && i < values.length; i++) {
             String name = names[i];
             if (name == null) continue;
-            if (name.toLowerCase().contains("password")) continue;
-            if (name.toLowerCase().contains("captcha")) continue;
-            map.put(name, values[i]);
+            if (isSensitiveKey(name)) continue;
+            map.put(name, sanitizeArgValue(values[i]));
         }
         return map;
+    }
+
+    private boolean isSensitiveKey(String key) {
+        String lower = key.toLowerCase();
+        return lower.contains("password")
+                || lower.contains("captcha")
+                || lower.contains("token")
+                || lower.contains("authorization")
+                || lower.contains("phone")
+                || lower.contains("mobile")
+                || lower.contains("email")
+                || lower.contains("contact")
+                || lower.contains("studentid")
+                || lower.contains("idcard")
+                || lower.contains("secret");
+    }
+
+    private Object sanitizeArgValue(Object value) {
+        if (value == null) return null;
+        if (value instanceof HttpServletRequest) return "HttpServletRequest";
+        if (value instanceof MultipartFile file) return "MultipartFile(" + safeText(file.getOriginalFilename()) + ")";
+        if (value instanceof Number || value instanceof Boolean) return value;
+
+        if (value instanceof Map<?, ?> src) {
+            Map<String, Object> sanitized = new LinkedHashMap<>();
+            int count = 0;
+            for (Map.Entry<?, ?> entry : src.entrySet()) {
+                if (count >= MAX_COLLECTION_ITEMS) {
+                    sanitized.put("...", "...");
+                    break;
+                }
+                String key = String.valueOf(entry.getKey());
+                if (isSensitiveKey(key)) {
+                    sanitized.put(key, "[MASKED]");
+                } else {
+                    sanitized.put(key, sanitizeArgValue(entry.getValue()));
+                }
+                count++;
+            }
+            return sanitized;
+        }
+
+        if (value instanceof Iterable<?> iterable) {
+            List<Object> result = new ArrayList<>();
+            int count = 0;
+            for (Object item : iterable) {
+                if (count >= MAX_COLLECTION_ITEMS) {
+                    result.add("...");
+                    break;
+                }
+                result.add(sanitizeArgValue(item));
+                count++;
+            }
+            return result;
+        }
+
+        if (value.getClass().isArray()) {
+            int length = Array.getLength(value);
+            List<Object> result = new ArrayList<>();
+            int max = Math.min(length, MAX_COLLECTION_ITEMS);
+            for (int i = 0; i < max; i++) {
+                result.add(sanitizeArgValue(Array.get(value, i)));
+            }
+            if (length > MAX_COLLECTION_ITEMS) {
+                result.add("...");
+            }
+            return result;
+        }
+
+        return safeText(String.valueOf(value));
+    }
+
+    private String safeText(String text) {
+        if (text == null) return "";
+        String masked = EMAIL_PATTERN.matcher(text).replaceAll("[已脱敏邮箱]");
+        masked = PHONE_PATTERN.matcher(masked).replaceAll("[已脱敏手机号]");
+        if (masked.length() > MAX_STRING_LENGTH) {
+            return masked.substring(0, MAX_STRING_LENGTH) + "...";
+        }
+        return masked;
     }
 }

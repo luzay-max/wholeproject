@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿﻿<template>
+<template>
   <div class="admin-page-container">
     <!-- 筛选和搜索区域 -->
     <div class="admin-search-card">
@@ -572,3 +572,5 @@ export default {
   line-height: 20px;
 }
 </style>
+
+

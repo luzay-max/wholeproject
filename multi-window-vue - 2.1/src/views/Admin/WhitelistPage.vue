@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+<template>
   <div class="admin-page-container">
     <!-- 筛选和搜索区域 -->
     <div class="admin-search-card">
@@ -487,3 +487,5 @@ const submitAdd = async () => {
   }
 }
 </style>
+
+

@@ -2,6 +2,7 @@ package com.lzy.lostandfound.exception;
 
 import com.lzy.lostandfound.vo.Result;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {//全局异常处理器
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -36,7 +38,7 @@ public class GlobalExceptionHandler {//全局异常处理器
 
     @ExceptionHandler(Exception.class)
     public Result handleException(Exception e) {
-        e.printStackTrace();
+        log.error("发生未处理异常", e);
         return Result.error(StringUtils.hasLength(e.getMessage()) ? e.getMessage() : "操作失败");//判断是否为空 给错误信息
         //传参 到Result 中 最好判断 错误信息是否给来源 用Spring 的 StringUtils 工具 判断是否为空
 

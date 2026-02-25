@@ -8,6 +8,7 @@ import com.lzy.lostandfound.entity.Activities;
 import com.lzy.lostandfound.entity.FindInfo;
 import com.lzy.lostandfound.service.IActivitiesService;
 import com.lzy.lostandfound.service.IFindInfoService;
+import com.lzy.lostandfound.utils.PublishTextQualityValidator;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
 import com.lzy.lostandfound.anno.Log;
@@ -50,12 +51,21 @@ public class FindInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String nameError = PublishTextQualityValidator.validateItemName(request.getName());
+            if (nameError != null) {
+                return Result.error(nameError);
+            }
+            String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
+            if (locationError != null) {
+                return Result.error(locationError);
+            }
+
             FindInfo findInfo = new FindInfo();
             findInfo.setId(UUID.randomUUID().toString());
             findInfo.setUserId(userId);
-            findInfo.setName(request.getName());
+            findInfo.setName(request.getName().trim());
             findInfo.setType(request.getType());
-            findInfo.setLocation(request.getLocation());
+            findInfo.setLocation(request.getLocation().trim());
             findInfo.setDescription(request.getDescription());
             findInfo.setImages(request.getImages());
             findInfo.setContactInfo(request.getContactName());
@@ -211,6 +221,15 @@ public class FindInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String nameError = PublishTextQualityValidator.validateItemName(request.getName());
+            if (nameError != null) {
+                return Result.error(nameError);
+            }
+            String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
+            if (locationError != null) {
+                return Result.error(locationError);
+            }
+
             FindInfo oldFindInfo = findInfoService.getById(request.getId());
             if (oldFindInfo == null) {
                 return Result.error("信息不存在");
@@ -223,9 +242,9 @@ public class FindInfoController {
             FindInfo findInfo = new FindInfo();
             findInfo.setId(request.getId());
             findInfo.setUserId(userId);
-            findInfo.setName(request.getName());
+            findInfo.setName(request.getName().trim());
             findInfo.setType(request.getType());
-            findInfo.setLocation(request.getLocation());
+            findInfo.setLocation(request.getLocation().trim());
             findInfo.setDescription(request.getDescription());
             findInfo.setImages(request.getImages());
             findInfo.setContactInfo(request.getContactName());

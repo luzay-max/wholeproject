@@ -201,7 +201,7 @@ export default {
     Clock, ZoomIn, Location, Calendar, Document, User, Phone, Message, Check
   },
   props: {
-    infoId: { type: Number, required: true },
+    infoId: { type: [String, Number], required: true },
     infoType: {
       type: String,
       default: 'lost',
@@ -255,13 +255,21 @@ export default {
     const canUpdateStatus = computed(() => canShowActions.value && userStore.userInfo.id === infoDetail.value.userId)
 
     function getCategoryIcon(value) {
+      const typeKey = String(value ?? '').trim().toUpperCase()
       const map = {
-        '1': '📱', // 电子产品
-        '2': '🧴', // 生活用品
-        '3': '🆔', // 证件
-        '4': '📦'  // 其他
+        ID_CARD: '🆔',
+        ELECTRONICS: '📱',
+        BOOKS: '📚',
+        CLOTHES: '👕',
+        DAILY_NECESSITIES: '🧴',
+        OTHER: '📦',
+        // 兼容历史数字值
+        '1': '📱',
+        '2': '🧴',
+        '3': '🆔',
+        '4': '📦'
       }
-      return map[value] || '📄'
+      return map[typeKey] || '📦'
     }
 
     function getCategoryLabel(value) {

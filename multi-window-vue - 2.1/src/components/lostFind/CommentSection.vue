@@ -166,6 +166,7 @@ import { useRouter } from 'vue-router';
 import { getComments, addComment, likeComment, deleteComment } from '../../api/commentsApi';
 import { useUserStore } from '../../store/userStore';
 import debounce from '../../utils/debounce';
+import { createClickGuard } from '../../utils/clickGuard';
 
 export default {
   name: 'CommentSection',
@@ -190,6 +191,7 @@ export default {
     const hasMore = ref(true);
     const likedComments = ref(new Set());
     const defaultAvatar = '/src/assets/images/1.png';
+    const clickGuard = createClickGuard(800);
 
     const formatDate = (ts) => {
       if (!ts) return '';
@@ -233,20 +235,22 @@ export default {
     };
 
     const submitComment = async () => {
-      if(!commentContent.value.trim()) { ElMessage.warning('请输入评论内容'); return; }
-      try { 
-        submittingComment.value=true; 
-        await addComment({ 
-          infoId: props.infoId, 
-          infoType: props.infoType, 
-          content: commentContent.value.trim() 
-        }); 
-        ElMessage.success('评论发布成功'); 
-        commentContent.value=''; 
-        loadComments(); 
-      }
-      catch(e){ console.error(e); ElMessage.error('评论发布失败'); }
-      finally{ submittingComment.value=false; }
+      await clickGuard.run('comment-submit', async () => {
+        if(!commentContent.value.trim()) { ElMessage.warning('请输入评论内容'); return; }
+        try {
+          submittingComment.value=true;
+          await addComment({
+            infoId: props.infoId,
+            infoType: props.infoType,
+            content: commentContent.value.trim()
+          });
+          ElMessage.success('评论发布成功');
+          commentContent.value='';
+          loadComments();
+        }
+        catch(e){ console.error(e); ElMessage.error('评论发布失败'); }
+        finally{ submittingComment.value=false; }
+      }, { cooldown: 1000 });
     };
 
     const likeCommentDebounced = debounce(async (commentId) => {
@@ -272,18 +276,20 @@ export default {
     };
 
     const handleDeleteComment = async (commentId) => {
-      try {
-        await ElMessageBox.confirm('确定要删除这条评论吗？', '确认删除', { 
-          confirmButtonText: '确定', 
-          cancelButtonText: '取消', 
-          type: 'warning' 
-        });
-        await deleteComment(commentId);
-        const idx = comments.value.findIndex(c=>c.id===commentId); 
-        if(idx>-1) comments.value.splice(idx,1); 
-        totalComments.value--;
-        ElMessage.success('删除成功');
-      } catch(e){ if(e!=='cancel') ElMessage.error('删除失败'); }
+      await clickGuard.run(`comment-delete-${commentId}`, async () => {
+        try {
+          await ElMessageBox.confirm('确定要删除这条评论吗？', '确认删除', {
+            confirmButtonText: '确定',
+            cancelButtonText: '取消',
+            type: 'warning'
+          });
+          await deleteComment(commentId);
+          const idx = comments.value.findIndex(c=>c.id===commentId);
+          if(idx>-1) comments.value.splice(idx,1);
+          totalComments.value--;
+          ElMessage.success('删除成功');
+        } catch(e){ if(e!=='cancel') ElMessage.error('删除失败'); }
+      }, { cooldown: 1000 });
     };
 
     const handleReply = (comment) => {

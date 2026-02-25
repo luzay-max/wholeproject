@@ -181,6 +181,7 @@ import { ElMessage } from 'element-plus';
 import { User, Lock, CircleCheck, Phone, Message, Postcard } from '@element-plus/icons-vue';
 import { register, checkUsername } from '../../api/userApi';
 import { validatePhone, validateEmail, validateStudentId, validatePassword, nameRegex } from '../../utils/validators';
+import { createClickGuard } from '../../utils/clickGuard';
 import DictSelect from '../Dict/DictSelect.vue';
 
 export default {
@@ -192,6 +193,7 @@ export default {
     const loading = ref(false);
     const checkingUsername = ref(false);
     const usernameCache = reactive({ value: '', exists: null });
+    const clickGuard = createClickGuard(800);
 
     const form = reactive({
       username: '',
@@ -316,25 +318,27 @@ export default {
     };
 
     const handleSubmit = async () => {
-      if (!formRef.value) return;
+      await clickGuard.run('register-submit', async () => {
+        if (!formRef.value) return;
 
-      if (!form.agreeTerms) {
-        ElMessage.warning('请先阅读并同意用户协议和隐私政策');
-        return;
-      }
-
-      try {
-        await formRef.value.validate();
-        loading.value = true;
-        await register({ ...form });
-        emit('register-success');
-      } catch (error) {
-        if (error !== false) {
-          ElMessage.error(error.message || '注册失败');
+        if (!form.agreeTerms) {
+          ElMessage.warning('请先阅读并同意用户协议和隐私政策');
+          return;
         }
-      } finally {
-        loading.value = false;
-      }
+
+        try {
+          await formRef.value.validate();
+          loading.value = true;
+          await register({ ...form });
+          emit('register-success');
+        } catch (error) {
+          if (error !== false) {
+            ElMessage.error(error.message || '注册失败');
+          }
+        } finally {
+          loading.value = false;
+        }
+      }, { cooldown: 1500 });
     };
 
     return {

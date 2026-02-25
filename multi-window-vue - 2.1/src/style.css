@@ -97,7 +97,8 @@
 html, body {
   height: 100%;
   width: 100%;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family: var(--font-family);
   font-size: 14px;
   line-height: 1.6;
@@ -308,4 +309,56 @@ a:active {
   flex: 1;
   min-height: 0;
   overflow: auto;
+}
+
+@media (max-width: 992px) {
+  .page-shell {
+    overflow: visible;
+  }
+}
+
+/* AI建议弹窗：全局样式（MessageBox挂载到body，需要全局规则） */
+.ai-preview-dialog {
+  width: min(92vw, 720px) !important;
+}
+
+.ai-preview-dialog .el-message-box__message {
+  width: 100%;
+}
+
+.ai-preview-dialog .ai-preview-content {
+  width: 100%;
+}
+
+.ai-preview-dialog .ai-preview-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.ai-preview-dialog .ai-preview-text {
+  margin: 0;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border-secondary);
+  background: #f8fafc;
+  color: var(--color-text-primary);
+  line-height: 1.6;
+}
+
+.ai-preview-dialog .ai-preview-tip {
+  margin: 10px 0 0;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+/* 兜底：即使 customClass 未生效，MessageBox 内仍按预期展示 */
+.el-message-box .ai-preview-content {
+  width: 100%;
+}
+
+.el-message-box .ai-preview-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-wrap: anywhere;
 }

@@ -38,6 +38,7 @@ public class OpenAiCompatibleClient implements AiModelClient {
         Map<String, Object> body = new HashMap<>();
         body.put("model", aiProperties.getModelText());
         body.put("temperature", aiProperties.getTemperature());
+        body.put("max_tokens", aiProperties.getMaxTokens());
 
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(buildTextMessage("system", systemPrompt));
@@ -52,6 +53,7 @@ public class OpenAiCompatibleClient implements AiModelClient {
         Map<String, Object> body = new HashMap<>();
         body.put("model", aiProperties.getModelVision());
         body.put("temperature", aiProperties.getTemperature());
+        body.put("max_tokens", aiProperties.getMaxTokens());
 
         List<Map<String, Object>> messages = new ArrayList<>();
         messages.add(buildTextMessage("system", systemPrompt));

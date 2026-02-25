@@ -99,6 +99,7 @@ import { ElMessage } from 'element-plus';
 import { User, Lock, Key, Loading } from '@element-plus/icons-vue';
 import { getCaptcha } from '../../api/userApi';
 import { useUserStore } from '../../store/userStore';
+import { createClickGuard } from '../../utils/clickGuard';
 
 export default {
   name: 'LoginForm',
@@ -109,6 +110,7 @@ export default {
     const loading = ref(false);
     const captchaId = ref('');
     const captchaImage = ref('');
+    const clickGuard = createClickGuard(800);
     
     const form = reactive({
       username: '',
@@ -129,7 +131,7 @@ export default {
       ]
     };
     
-    const fetchCaptcha = async () => {
+    const doFetchCaptcha = async () => {
       try {
         const res = await getCaptcha();
         captchaId.value = res.data.captchaId;
@@ -139,38 +141,44 @@ export default {
         console.error('获取验证码失败:', error);
       }
     };
+
+    const fetchCaptcha = async () => {
+      await clickGuard.run('login-captcha', doFetchCaptcha, { cooldown: 600 });
+    };
     
     const handleSubmit = async () => {
-      if (!formRef.value) return;
-      
-      try {
-        await formRef.value.validate();
-        loading.value = true;
-        
-        await userStore.login({
-          username: form.username,
-          password: form.password,
-          remember: form.remember,
-          captchaId: captchaId.value,
-          captchaCode: form.captchaCode
-        });
-        
-        if (form.remember) {
-          localStorage.setItem('rememberedUser', JSON.stringify({
-            username: form.username
-          }));
-        } else {
-          localStorage.removeItem('rememberedUser');
+      await clickGuard.run('login-submit', async () => {
+        if (!formRef.value) return;
+
+        try {
+          await formRef.value.validate();
+          loading.value = true;
+
+          await userStore.login({
+            username: form.username,
+            password: form.password,
+            remember: form.remember,
+            captchaId: captchaId.value,
+            captchaCode: form.captchaCode
+          });
+
+          if (form.remember) {
+            localStorage.setItem('rememberedUser', JSON.stringify({
+              username: form.username
+            }));
+          } else {
+            localStorage.removeItem('rememberedUser');
+          }
+
+          emit('login-success');
+        } catch (error) {
+          if (error !== false) {
+            doFetchCaptcha();
+          }
+        } finally {
+          loading.value = false;
         }
-        
-        emit('login-success');
-      } catch (error) {
-        if (error !== false) {
-          fetchCaptcha();
-        }
-      } finally {
-        loading.value = false;
-      }
+      }, { cooldown: 1200 });
     };
 
     const handleForgotPassword = () => {

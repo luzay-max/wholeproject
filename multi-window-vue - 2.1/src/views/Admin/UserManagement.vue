@@ -1,4 +1,4 @@
-﻿﻿﻿﻿﻿﻿﻿﻿<template>
+<template>
   <div class="admin-page-container">
     <!-- 筛选和搜索区域 -->
     <div class="admin-search-card">
@@ -269,6 +269,7 @@ import {
   resetUserPassword
 } from '../../api/adminApi';
 import { nameRegex } from '../../utils/validators';
+import { createClickGuard } from '../../utils/clickGuard';
 
 export default {
   name: 'UserManagement',
@@ -285,6 +286,7 @@ export default {
     const roleDialogVisible = ref(false);
     const userFormRef = ref(null);
     const roleFormRef = ref(null);
+    const clickGuard = createClickGuard(800);
     const dateRange = ref([]);
     const isEditMode = ref(false);
     const isMobile = ref(false);
@@ -361,23 +363,26 @@ export default {
       role: [{ required: true, message: '请选择角色', trigger: 'change' }]
     };
 
-    const handleResetPassword = (row) => {
-      ElMessageBox.confirm(
-        `确定要重置用户“${row.username}”的密码吗？重置后密码将变为123456`,
-        '重置密码确认',
-        {
-          confirmButtonText: '确定重置',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      ).then(async () => {
+    const handleResetPassword = async (row) => {
+      await clickGuard.run(`user-reset-pwd-${row.id}`, async () => {
         try {
+          await ElMessageBox.confirm(
+            `确定要重置用户“${row.username}”的密码吗？重置后密码将变为123456`,
+            '重置密码确认',
+            {
+              confirmButtonText: '确定重置',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          );
           await resetUserPassword(row.id);
           ElMessage.success('密码重置成功，新密码：123456');
         } catch (error) {
-          ElMessage.error('密码重置失败：' + (error.message || '未知错误'));
+          if (error !== 'cancel') {
+            ElMessage.error('密码重置失败：' + (error.message || '未知错误'));
+          }
         }
-      }).catch(() => {});
+      }, { cooldown: 1200 });
     };
 
     // 格式化日期
@@ -552,26 +557,28 @@ export default {
 
     // 确认保存用户 (新增/编辑)
     const handleConfirmUser = async () => {
-      if (!userFormRef.value) return;
+      await clickGuard.run('user-confirm-save', async () => {
+        if (!userFormRef.value) return;
 
-      try {
-        await userFormRef.value.validate();
+        try {
+          await userFormRef.value.validate();
 
-        if (isEditMode.value) {
-          await updateUser(userForm.id, userForm);
-          ElMessage.success('用户信息更新成功');
-        } else {
-          await createUser(userForm);
-          ElMessage.success('新增用户成功');
+          if (isEditMode.value) {
+            await updateUser(userForm.id, userForm);
+            ElMessage.success('用户信息更新成功');
+          } else {
+            await createUser(userForm);
+            ElMessage.success('新增用户成功');
+          }
+
+          userDialogVisible.value = false;
+          loadUserList();
+        } catch (error) {
+          if (error !== false) {
+            ElMessage.error((isEditMode.value ? '更新' : '新增') + '失败：' + (error.message || '未知错误'));
+          }
         }
-
-        userDialogVisible.value = false;
-        loadUserList();
-      } catch (error) {
-        if (error !== false) {
-          ElMessage.error((isEditMode.value ? '更新' : '新增') + '失败：' + (error.message || '未知错误'));
-        }
-      }
+      }, { cooldown: 1200 });
     };
 
     // 修改角色
@@ -584,21 +591,23 @@ export default {
 
     // 确认修改角色
     const handleConfirmRole = async () => {
-      if (!roleFormRef.value) return;
+      await clickGuard.run(`user-confirm-role-${roleForm.id || 'new'}`, async () => {
+        if (!roleFormRef.value) return;
 
-      try {
-        await roleFormRef.value.validate();
+        try {
+          await roleFormRef.value.validate();
 
-        await changeUserRole(roleForm.id, roleForm.role);
+          await changeUserRole(roleForm.id, roleForm.role);
 
-        ElMessage.success('角色修改成功');
-        roleDialogVisible.value = false;
-        loadUserList();
-      } catch (error) {
-        if (error !== false) {
-          ElMessage.error('修改失败：' + (error.message || '未知错误'));
+          ElMessage.success('角色修改成功');
+          roleDialogVisible.value = false;
+          loadUserList();
+        } catch (error) {
+          if (error !== false) {
+            ElMessage.error('修改失败：' + (error.message || '未知错误'));
+          }
         }
-      }
+      }, { cooldown: 1000 });
     };
 
     // 修改用户状态(封禁/解封)
@@ -638,57 +647,61 @@ export default {
 
     // 删除用户
     const handleDelete = async (user) => {
-      try {
-        await ElMessageBox.confirm(
-          `确定要删除用户“${user.username}”吗？`,
-          '删除确认',
-          {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning'
+      await clickGuard.run(`user-delete-${user.id}`, async () => {
+        try {
+          await ElMessageBox.confirm(
+            `确定要删除用户“${user.username}”吗？`,
+            '删除确认',
+            {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          );
+
+          await deleteUser(user.id);
+
+          ElMessage.success('用户删除成功');
+          loadUserList();
+        } catch (error) {
+          if (error !== 'cancel') {
+            ElMessage.error('删除失败：' + (error.message || '未知错误'));
           }
-        );
-
-        await deleteUser(user.id);
-
-        ElMessage.success('用户删除成功');
-        loadUserList();
-      } catch (error) {
-        if (error !== 'cancel') {
-          ElMessage.error('删除失败：' + (error.message || '未知错误'));
         }
-      }
+      }, { cooldown: 1200 });
     };
 
     // 批量删除
     const handleBatchDelete = async () => {
-      if (selectedUsers.value.length === 0) {
-        ElMessage.warning('请选择要删除的用户');
-        return;
-      }
-
-      try {
-        await ElMessageBox.confirm(
-          `确定要删除选中的 ${selectedUsers.value.length} 个用户吗？`,
-          '批量删除确认',
-          {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning'
-          }
-        );
-
-        const idsToDelete = selectedUsers.value.map(user => user.id);
-        await batchDeleteUsers(idsToDelete);
-
-        ElMessage.success('批量删除成功');
-        selectedUsers.value = [];
-        loadUserList();
-      } catch (error) {
-        if (error !== 'cancel') {
-          ElMessage.error('批量删除失败：' + (error.message || '未知错误'));
+      await clickGuard.run('user-batch-delete', async () => {
+        if (selectedUsers.value.length === 0) {
+          ElMessage.warning('请选择要删除的用户');
+          return;
         }
-      }
+
+        try {
+          await ElMessageBox.confirm(
+            `确定要删除选中的 ${selectedUsers.value.length} 个用户吗？`,
+            '批量删除确认',
+            {
+              confirmButtonText: '确定',
+              cancelButtonText: '取消',
+              type: 'warning'
+            }
+          );
+
+          const idsToDelete = selectedUsers.value.map(user => user.id);
+          await batchDeleteUsers(idsToDelete);
+
+          ElMessage.success('批量删除成功');
+          selectedUsers.value = [];
+          loadUserList();
+        } catch (error) {
+          if (error !== 'cancel') {
+            ElMessage.error('批量删除失败：' + (error.message || '未知错误'));
+          }
+        }
+      }, { cooldown: 1500 });
     };
 
     // 组件挂载时加载数据
@@ -827,3 +840,5 @@ export default {
   }
 }
 </style>
+
+

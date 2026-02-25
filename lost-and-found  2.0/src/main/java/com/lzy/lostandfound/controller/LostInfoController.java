@@ -8,6 +8,7 @@ import com.lzy.lostandfound.entity.Activities;
 import com.lzy.lostandfound.entity.LostInfo;
 import com.lzy.lostandfound.service.IActivitiesService;
 import com.lzy.lostandfound.service.ILostInfoService;
+import com.lzy.lostandfound.utils.PublishTextQualityValidator;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
 import com.lzy.lostandfound.anno.Log;
@@ -49,12 +50,21 @@ public class LostInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String nameError = PublishTextQualityValidator.validateItemName(request.getName());
+            if (nameError != null) {
+                return Result.error(nameError);
+            }
+            String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
+            if (locationError != null) {
+                return Result.error(locationError);
+            }
+
             LostInfo lostInfo = new LostInfo();
             lostInfo.setId(UUID.randomUUID().toString());
             lostInfo.setUserId(userId);
-            lostInfo.setName(request.getName());
+            lostInfo.setName(request.getName().trim());
             lostInfo.setType(request.getType());
-            lostInfo.setLocation(request.getLocation());
+            lostInfo.setLocation(request.getLocation().trim());
             lostInfo.setDescription(request.getDescription());
             lostInfo.setImages(request.getImages());
             lostInfo.setContactInfo(request.getContactName());
@@ -190,6 +200,15 @@ public class LostInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String nameError = PublishTextQualityValidator.validateItemName(request.getName());
+            if (nameError != null) {
+                return Result.error(nameError);
+            }
+            String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
+            if (locationError != null) {
+                return Result.error(locationError);
+            }
+
             LostInfo oldLostInfo = lostInfoService.getById(request.getId());
             if (oldLostInfo == null) {
                 return Result.error("信息不存在");
@@ -202,9 +221,9 @@ public class LostInfoController {
             LostInfo lostInfo = new LostInfo();
             lostInfo.setId(request.getId());
             lostInfo.setUserId(userId);
-            lostInfo.setName(request.getName());
+            lostInfo.setName(request.getName().trim());
             lostInfo.setType(request.getType());
-            lostInfo.setLocation(request.getLocation());
+            lostInfo.setLocation(request.getLocation().trim());
             lostInfo.setDescription(request.getDescription());
             lostInfo.setImages(request.getImages());
             lostInfo.setContactInfo(request.getContactName());

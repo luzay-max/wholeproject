@@ -16,5 +16,7 @@ public class AiProperties {
     private int rateLimitPerMinute = 10;
     private long cacheTtlSeconds = 600L;
     private double temperature = 0.2D;
+    private int maxTokens = 512;
 }
+
 

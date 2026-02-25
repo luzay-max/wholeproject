@@ -6,6 +6,7 @@ import com.lzy.lostandfound.config.AiProperties;
 import com.lzy.lostandfound.dto.AiDescriptionSuggestRequest;
 import com.lzy.lostandfound.dto.AiDescriptionSuggestResponse;
 import com.lzy.lostandfound.service.IAiDescriptionService;
+import com.lzy.lostandfound.utils.PublishTextQualityValidator;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -63,6 +64,14 @@ public class AiDescriptionServiceImpl implements IAiDescriptionService {
         }
 
         NormalizedInput input = normalizeRequest(request);
+        String nameError = PublishTextQualityValidator.validateItemName(input.name());
+        if (nameError != null) {
+            throw new IllegalArgumentException(nameError);
+        }
+        String locationError = PublishTextQualityValidator.validateLocation(input.location());
+        if (locationError != null) {
+            throw new IllegalArgumentException(locationError);
+        }
         applyRateLimit(userId);
 
         String cacheKey = buildCacheKey(userId, input);

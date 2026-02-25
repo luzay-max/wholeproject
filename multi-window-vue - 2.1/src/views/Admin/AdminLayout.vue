@@ -429,6 +429,10 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 992px) {
+  .admin-layout {
+    height: 100dvh;
+  }
+
   .layout-aside {
     position: fixed;
     top: 0;
@@ -475,6 +479,7 @@ onBeforeUnmount(() => {
     padding: 0;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

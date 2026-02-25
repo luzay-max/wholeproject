@@ -1,11 +1,11 @@
 package com.lzy.lostandfound.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.lzy.lostandfound.entity.User;
 import com.lzy.lostandfound.service.IUserService;
 import com.lzy.lostandfound.utils.AliOssUtil;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -13,6 +13,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.util.Map;
 import java.util.UUID;
 
+@Slf4j
 @RestController
 @RequestMapping("/user")
 
@@ -32,15 +33,14 @@ public class FileUploadController {
 
         try {
             // 生成唯一文件名
-            String originalFilename = file.getOriginalFilename();
-            String fileName = UUID.randomUUID().toString() + originalFilename.substring(originalFilename.lastIndexOf("."));
+            String fileName = buildUniqueFileName(file);
 
             // 上传到 OSS
             String url = AliOssUtil.uploadFile(fileName, file.getInputStream());
 
             // 更新数据库
             Map<String, Object> claims = ThreadLocalUtil.get();
-            String userId = (String) claims.get("id");
+            String userId = claims != null && claims.get("id") != null ? String.valueOf(claims.get("id")) : null;
             if (userId == null) {
                 return Result.error("用户未登录或身份失效");
             }
@@ -57,26 +57,36 @@ public class FileUploadController {
             return Result.success(url);
 
         } catch (Exception e) {
-            e.printStackTrace(); // 保留日志供调试
+            log.error("头像上传失败", e);
             return Result.error("头像上传失败，请重试");
         }
     }
 
 
 @PostMapping("/uploadImage")
-    public Result<String> uploadImage(MultipartFile file) throws Exception {
-        //文件存在本地磁盘
-        //保证文件名唯一
-        String originalFilename = file.getOriginalFilename();
-        String fileName = UUID.randomUUID().toString() + originalFilename.substring(originalFilename.lastIndexOf("."));
-//        file.transferTo(new File("C:\\Users\\Max\\Desktop\\files\\"+fileName));
-        //调用工具类
-        //上传到OSS
-        //返回url地址
-        String url =AliOssUtil.uploadFile(fileName, file.getInputStream());
-
-        return Result.success(url);
-
+    public Result<String> uploadImage(@RequestParam("file") MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            return Result.error("请上传图片文件");
+        }
+        try {
+            String fileName = buildUniqueFileName(file);
+            String url = AliOssUtil.uploadFile(fileName, file.getInputStream());
+            return Result.success(url);
+        } catch (Exception e) {
+            log.error("图片上传失败", e);
+            return Result.error("图片上传失败，请重试");
+        }
     }
 
+    private String buildUniqueFileName(MultipartFile file) {
+        String originalFilename = file.getOriginalFilename();
+        String extension = "";
+        if (originalFilename != null) {
+            int index = originalFilename.lastIndexOf(".");
+            if (index >= 0 && index < originalFilename.length() - 1) {
+                extension = originalFilename.substring(index);
+            }
+        }
+        return UUID.randomUUID() + extension;
+    }
 }
