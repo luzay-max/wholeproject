@@ -63,6 +63,10 @@ public class AdminController {
     private HonorPeriodMapper honorPeriodMapper;
     @Autowired
     private HonorPeriodItemMapper honorPeriodItemMapper;
+    @Autowired
+    private IClaimOrderService claimOrderService;
+    @Autowired
+    private NoticeHelperService noticeHelperService;
 
     private String currentLoginUserId() {
         Map<String, Object> claims = ThreadLocalUtil.get();
@@ -180,11 +184,16 @@ public class AdminController {
             if (period == null) {
                 return Result.error("周期不存在");
             }
-            if (!"SENT".equals(period.getStatus())) {
-                period.setStatus("SENT");
-                period.setSendTime(LocalDateTime.now());
-                honorPeriodService.updateById(period);
+            String status = period.getStatus();
+            if ("AWARDED".equalsIgnoreCase(status)) {
+                return Result.error("该周期已颁奖，不能再次标记为已发送");
             }
+            if ("SENT".equalsIgnoreCase(status)) {
+                return Result.success("该周期已是已发送状态");
+            }
+            period.setStatus("SENT");
+            period.setSendTime(LocalDateTime.now());
+            honorPeriodService.updateById(period);
             return Result.success("标记成功");
         } catch (Exception e) {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
@@ -204,11 +213,16 @@ public class AdminController {
             if (period == null) {
                 return Result.error("周期不存在");
             }
-            if (!"AWARDED".equals(period.getStatus())) {
-                period.setStatus("AWARDED");
-                period.setAwardTime(LocalDateTime.now());
-                honorPeriodService.updateById(period);
+            String status = period.getStatus();
+            if ("AWARDED".equalsIgnoreCase(status)) {
+                return Result.success("该周期已是已颁奖状态");
             }
+            if (!"SENT".equalsIgnoreCase(status)) {
+                return Result.error("仅已发送的周期可标记为已颁奖");
+            }
+            period.setStatus("AWARDED");
+            period.setAwardTime(LocalDateTime.now());
+            honorPeriodService.updateById(period);
             return Result.success("标记成功");
         } catch (Exception e) {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
@@ -623,6 +637,9 @@ public class AdminController {
 
         if ("lost".equalsIgnoreCase(idAndType.getType())) {
             LostInfo lostInfo = lostInfoService.getById(idAndType.getId());
+            if (lostInfo == null) {
+                return Result.error("信息不存在");
+            }
             lostInfo.setStatus("APPROVED");
 
             lostInfoService.updateById(lostInfo);
@@ -636,9 +653,19 @@ public class AdminController {
             act.setContent("发布了失物信息：" + lostInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    lostInfo.getUserId(),
+                    "审核通过",
+                    "您的失物信息「" + lostInfo.getName() + "」已审核通过。",
+                    "AUDIT",
+                    lostInfo.getId()
+            );
 
         } else if ("find".equalsIgnoreCase(idAndType.getType())) {
             com.lzy.lostandfound.entity.FindInfo findInfo = findInfoService.getById(idAndType.getId());
+            if (findInfo == null) {
+                return Result.error("信息不存在");
+            }
             findInfo.setStatus("APPROVED");
             findInfoService.updateById(findInfo);
             //  插入审核通过后发布活动日志
@@ -651,6 +678,13 @@ public class AdminController {
             act.setContent("发布了招领信息：" + findInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    findInfo.getUserId(),
+                    "审核通过",
+                    "您的招领信息「" + findInfo.getName() + "」已审核通过。",
+                    "AUDIT",
+                    findInfo.getId()
+            );
         } else {
             return Result.error("类型错误");
         }
@@ -677,6 +711,13 @@ public class AdminController {
             act.setContent("管理员下架了失物信息：" + lostInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    lostInfo.getUserId(),
+                    "信息已下架",
+                    "您的失物信息「" + lostInfo.getName() + "」已被管理员下架。",
+                    "AUDIT",
+                    lostInfo.getId()
+            );
         } else if ("find".equalsIgnoreCase(idAndType.getType())) {
             com.lzy.lostandfound.entity.FindInfo findInfo = findInfoService.getById(idAndType.getId());
             if (findInfo == null) {
@@ -693,6 +734,13 @@ public class AdminController {
             act.setContent("管理员下架了招领信息：" + findInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    findInfo.getUserId(),
+                    "信息已下架",
+                    "您的招领信息「" + findInfo.getName() + "」已被管理员下架。",
+                    "AUDIT",
+                    findInfo.getId()
+            );
         } else {
             return Result.error("类型错误");
         }
@@ -719,6 +767,13 @@ public class AdminController {
             act.setContent("管理员恢复至待审核：失物 " + lostInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    lostInfo.getUserId(),
+                    "信息恢复待审核",
+                    "您的失物信息「" + lostInfo.getName() + "」已恢复为待审核状态。",
+                    "AUDIT",
+                    lostInfo.getId()
+            );
         } else if ("find".equalsIgnoreCase(idAndType.getType())) {
             com.lzy.lostandfound.entity.FindInfo findInfo = findInfoService.getById(idAndType.getId());
             if (findInfo == null) {
@@ -735,6 +790,13 @@ public class AdminController {
             act.setContent("管理员恢复至待审核：招领 " + findInfo.getName());
             act.setCreateTime(LocalDateTime.now());
             activitiesService.save(act);
+            noticeHelperService.sendNotice(
+                    findInfo.getUserId(),
+                    "信息恢复待审核",
+                    "您的招领信息「" + findInfo.getName() + "」已恢复为待审核状态。",
+                    "AUDIT",
+                    findInfo.getId()
+            );
         } else {
             return Result.error("类型错误");
         }
@@ -761,6 +823,13 @@ public class AdminController {
                         act.setContent("发布了失物信息：" + lostInfo.getName());
                         act.setCreateTime(LocalDateTime.now());
                         activitiesService.save(act);
+                        noticeHelperService.sendNotice(
+                                lostInfo.getUserId(),
+                                "审核通过",
+                                "您的失物信息「" + lostInfo.getName() + "」已审核通过。",
+                                "AUDIT",
+                                lostInfo.getId()
+                        );
                     }
                 } else if ("find".equalsIgnoreCase(idAndType.getType())) {
                     com.lzy.lostandfound.entity.FindInfo findInfo = findInfoService.getById(idAndType.getId());
@@ -777,6 +846,13 @@ public class AdminController {
                         act.setContent("发布了招领信息：" + findInfo.getName());
                         act.setCreateTime(LocalDateTime.now());
                         activitiesService.save(act);
+                        noticeHelperService.sendNotice(
+                                findInfo.getUserId(),
+                                "审核通过",
+                                "您的招领信息「" + findInfo.getName() + "」已审核通过。",
+                                "AUDIT",
+                                findInfo.getId()
+                        );
                     }
                 }
             }
@@ -809,6 +885,13 @@ public class AdminController {
             comment.setContent(idAndType.getReason());
             commentService.save(comment);
             lostInfoService.updateById(lostInfo);
+            noticeHelperService.sendNotice(
+                    lostInfo.getUserId(),
+                    "审核未通过",
+                    "您的失物信息「" + lostInfo.getName() + "」未通过审核，原因：" + idAndType.getReason(),
+                    "AUDIT",
+                    lostInfo.getId()
+            );
         } else if ("find".equalsIgnoreCase(idAndType.getType())) {
             com.lzy.lostandfound.entity.FindInfo findInfo = findInfoService.getById(idAndType.getId());
             findInfo.setStatus("REJECTED");
@@ -824,6 +907,13 @@ public class AdminController {
             comment.setContent(idAndType.getReason());
             commentService.save(comment);
             findInfoService.updateById(findInfo);
+            noticeHelperService.sendNotice(
+                    findInfo.getUserId(),
+                    "审核未通过",
+                    "您的招领信息「" + findInfo.getName() + "」未通过审核，原因：" + idAndType.getReason(),
+                    "AUDIT",
+                    findInfo.getId()
+            );
         } else {
             return Result.error("类型错误");
         }
@@ -1389,6 +1479,110 @@ public class AdminController {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取统计数据失败");
         }
+    }
+
+    /**
+     * 管理看板总览指标
+     */
+    @GetMapping("/admin/dashboard/overview")
+    public Result dashboardOverview() {
+        try {
+            Map<String, Object> data = new HashMap<>();
+
+            long totalPublished = lostInfoService.count() + findInfoService.count();
+            long completedClaims = claimOrderService.count(
+                    new LambdaQueryWrapper<ClaimOrder>().eq(ClaimOrder::getStatus, "COMPLETED")
+            );
+            long totalClaims = claimOrderService.count();
+            double claimSuccessRate = totalClaims == 0 ? 0D : (completedClaims * 100.0 / totalClaims);
+
+            List<ClaimOrder> completedList = claimOrderService.list(
+                    new LambdaQueryWrapper<ClaimOrder>()
+                            .eq(ClaimOrder::getStatus, "COMPLETED")
+                            .isNotNull(ClaimOrder::getApplyTime)
+                            .isNotNull(ClaimOrder::getCompleteTime)
+            );
+            double avgProcessHours = completedList.isEmpty()
+                    ? 0D
+                    : completedList.stream()
+                    .mapToLong(x -> java.time.Duration.between(x.getApplyTime(), x.getCompleteTime()).toHours())
+                    .average()
+                    .orElse(0D);
+
+            LocalDateTime sevenDaysAgo = LocalDate.now().minusDays(6).atStartOfDay();
+            List<Activities> recentActivities = activitiesService.list(
+                    new LambdaQueryWrapper<Activities>()
+                            .ge(Activities::getCreateTime, sevenDaysAgo)
+                            .isNotNull(Activities::getUserId)
+            );
+            long activeUsers7d = recentActivities.stream()
+                    .map(Activities::getUserId)
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .count();
+
+            data.put("totalPublished", totalPublished);
+            data.put("totalClaims", totalClaims);
+            data.put("completedClaims", completedClaims);
+            data.put("claimSuccessRate", Math.round(claimSuccessRate * 100.0) / 100.0);
+            data.put("avgProcessHours", Math.round(avgProcessHours * 100.0) / 100.0);
+            data.put("activeUsers7d", activeUsers7d);
+            data.put("pendingAuditCount", (statisticsPendingCount()));
+            return Result.success(data);
+        } catch (Exception e) {
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
+            return Result.error("获取看板总览失败");
+        }
+    }
+
+    /**
+     * 管理看板趋势数据
+     */
+    @GetMapping("/admin/dashboard/trend")
+    public Result dashboardTrend(@RequestParam(defaultValue = "7") Integer days) {
+        try {
+            int safeDays = Math.max(7, Math.min(days, 30));
+            List<Map<String, Object>> trend = new ArrayList<>();
+
+            for (int i = safeDays - 1; i >= 0; i--) {
+                LocalDate day = LocalDate.now().minusDays(i);
+                LocalDateTime start = day.atStartOfDay();
+                LocalDateTime end = day.plusDays(1).atStartOfDay();
+
+                long lostCount = lostInfoService.count(new LambdaQueryWrapper<LostInfo>()
+                        .ge(LostInfo::getPublishTime, start)
+                        .lt(LostInfo::getPublishTime, end));
+                long findCount = findInfoService.count(new LambdaQueryWrapper<FindInfo>()
+                        .ge(FindInfo::getPublishTime, start)
+                        .lt(FindInfo::getPublishTime, end));
+                long claimApplied = claimOrderService.count(new LambdaQueryWrapper<ClaimOrder>()
+                        .ge(ClaimOrder::getApplyTime, start)
+                        .lt(ClaimOrder::getApplyTime, end));
+                long claimCompleted = claimOrderService.count(new LambdaQueryWrapper<ClaimOrder>()
+                        .eq(ClaimOrder::getStatus, "COMPLETED")
+                        .ge(ClaimOrder::getCompleteTime, start)
+                        .lt(ClaimOrder::getCompleteTime, end));
+
+                Map<String, Object> row = new HashMap<>();
+                row.put("date", day.toString());
+                row.put("lostPublished", lostCount);
+                row.put("findPublished", findCount);
+                row.put("claimApplied", claimApplied);
+                row.put("claimCompleted", claimCompleted);
+                trend.add(row);
+            }
+
+            return Result.success(Map.of("days", safeDays, "list", trend));
+        } catch (Exception e) {
+            com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
+            return Result.error("获取看板趋势失败");
+        }
+    }
+
+    private long statisticsPendingCount() {
+        long pendingLost = lostInfoService.count(new LambdaQueryWrapper<LostInfo>().eq(LostInfo::getStatus, "PENDING"));
+        long pendingFind = findInfoService.count(new LambdaQueryWrapper<FindInfo>().eq(FindInfo::getStatus, "PENDING"));
+        return pendingLost + pendingFind;
     }
 
     // ========== 评论管理接口 ==========

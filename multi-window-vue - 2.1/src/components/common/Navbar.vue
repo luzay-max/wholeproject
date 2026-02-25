@@ -36,6 +36,7 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item command="/admin/dashboard">管理看板</el-dropdown-item>
                   <el-dropdown-item command="/admin/info?tab=audit">信息审核</el-dropdown-item>
                   <el-dropdown-item command="/admin/users">用户管理</el-dropdown-item>
                   <el-dropdown-item command="/admin/info?tab=manage&type=lost">失物管理</el-dropdown-item>
@@ -63,7 +64,17 @@
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
-            
+
+            <el-badge :value="unreadCount > 99 ? '99+' : unreadCount" :hidden="unreadCount === 0">
+              <el-button text class="action-item" @click="navigateTo('/notice-center')">
+                通知
+              </el-button>
+            </el-badge>
+
+            <el-button text class="action-item" @click="navigateTo('/claim-center')">
+              认领中心
+            </el-button>
+
             <!-- 用户菜单 -->
             <el-dropdown @command="handleUserCommand">
               <span class="action-item user-action">
@@ -156,6 +167,8 @@
           </template>
 
           <el-button text class="mobile-nav-item" @click="navigateToAndClose('/user-center')">个人中心</el-button>
+          <el-button text class="mobile-nav-item" @click="navigateToAndClose('/notice-center')">通知中心</el-button>
+          <el-button text class="mobile-nav-item" @click="navigateToAndClose('/claim-center')">认领中心</el-button>
           <el-button text class="mobile-nav-item danger" @click="handleMobileLogout">退出登录</el-button>
         </template>
       </div>
@@ -164,12 +177,13 @@
 </template>
 
 <script>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { ArrowDown, Menu, User } from '@element-plus/icons-vue';
 import { useUserStore } from '../../store/userStore';
 import { logout } from '../../api/authApi';
+import { getNoticeUnreadCount } from '../../api/noticeApi';
 
 export default {
   name: 'Navbar',
@@ -183,6 +197,7 @@ export default {
     const router = useRouter();
     const userStore = useUserStore();
     const mobileMenuVisible = ref(false);
+    const unreadCount = ref(0);
     
     const menuItems = computed(() => {
       const items = [
@@ -195,6 +210,7 @@ export default {
     });
 
     const adminMenuItems = [
+      { title: '管理看板', path: '/admin/dashboard' },
       { title: '信息审核', path: '/admin/info?tab=audit' },
       { title: '用户管理', path: '/admin/users' },
       { title: '失物管理', path: '/admin/info?tab=manage&type=lost' },
@@ -253,6 +269,23 @@ export default {
       await handleUserCommand('logout');
       mobileMenuVisible.value = false;
     };
+
+    const loadUnreadCount = async () => {
+      if (!userStore.isLoggedIn) {
+        unreadCount.value = 0;
+        return;
+      }
+      try {
+        const res = await getNoticeUnreadCount();
+        unreadCount.value = Number(res?.data?.unreadCount || 0);
+      } catch (_) {
+        unreadCount.value = 0;
+      }
+    };
+
+    onMounted(loadUnreadCount);
+    watch(() => route.fullPath, loadUnreadCount);
+    watch(() => userStore.isLoggedIn, loadUnreadCount);
     
     return {
       route,
@@ -260,6 +293,7 @@ export default {
       menuItems,
       adminMenuItems,
       publishMenuItems,
+      unreadCount,
       mobileMenuVisible,
       navigateTo,
       navigateToAndClose,

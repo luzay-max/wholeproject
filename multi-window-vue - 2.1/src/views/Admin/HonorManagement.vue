@@ -100,7 +100,7 @@
           <el-button @click="handleReset">重置</el-button>
           <el-button type="success" :loading="generating" @click="openGenerateDialog">
             <el-icon><Refresh /></el-icon>
-            刷新光荣榜
+            刷新本周光荣榜
           </el-button>
         </el-col>
       </el-row>
@@ -174,20 +174,24 @@
               >
                 标记已发送
               </el-button>
-              <el-button
-                type="warning"
-                link
-                :disabled="scope.row.status === 'AWARDED'"
-                @click="handleMarkAwarded(scope.row)"
-              >
-                标记已颁奖
-              </el-button>
-              <el-button type="info" link @click="handleExport(scope.row)">
-                导出
-              </el-button>
-              <el-button type="danger" link @click="handleDelete(scope.row)">
-                删除
-              </el-button>
+              <el-dropdown trigger="click" @command="(command) => handleMoreCommand(scope.row, command)">
+                <el-button type="info" link>
+                  <el-icon><MoreFilled /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item command="award" :disabled="scope.row.status !== 'SENT'">
+                      标记已颁奖
+                    </el-dropdown-item>
+                    <el-dropdown-item command="export">
+                      导出
+                    </el-dropdown-item>
+                    <el-dropdown-item command="delete" divided>
+                      删除
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
             </template>
           </el-table-column>
         </el-table>
@@ -356,7 +360,7 @@
 <script>
 import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
-import { Refresh } from '@element-plus/icons-vue';
+import { Refresh, MoreFilled } from '@element-plus/icons-vue';
 import DictSelect from '../../components/Dict/DictSelect.vue';
 import DictTag from '../../components/Dict/DictTag.vue';
 import { getDicts } from '../../api/system/dict/data';
@@ -380,6 +384,7 @@ export default {
   name: 'HonorManagement',
   components: {
     Refresh,
+    MoreFilled,
     DictSelect,
     DictTag
   },
@@ -428,12 +433,12 @@ export default {
     // 生成光荣榜对话框相关
     const generateDialogVisible = ref(false);
     const generateForm = reactive({
-      type: 1, // 0=本周, 1=上周, 2=自定义日期
+      type: 0, // 0=本周, 1=上周, 2=自定义日期
       dateRange: []
     });
 
     const openGenerateDialog = () => {
-      generateForm.type = 1;
+      generateForm.type = 0;
       generateForm.dateRange = [];
       generateDialogVisible.value = true;
     };
@@ -721,6 +726,20 @@ export default {
       }
     };
 
+    const handleMoreCommand = async (period, command) => {
+      if (command === 'award') {
+        await handleMarkAwarded(period);
+        return;
+      }
+      if (command === 'export') {
+        await handleExport(period);
+        return;
+      }
+      if (command === 'delete') {
+        await handleDelete(period);
+      }
+    };
+
     const handleGenerate = async () => {
       try {
         generating.value = true;
@@ -883,6 +902,7 @@ export default {
       handleViewDetail,
       handleMarkSent,
       handleMarkAwarded,
+      handleMoreCommand,
       handleExport,
       handleDelete,
       handleGenerate,

@@ -5,9 +5,14 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzy.lostandfound.dto.CommentCreateRequest;
 import com.lzy.lostandfound.entity.Comment;
 import com.lzy.lostandfound.entity.CommentLike;
+import com.lzy.lostandfound.entity.FindInfo;
+import com.lzy.lostandfound.entity.LostInfo;
 import com.lzy.lostandfound.entity.User;
 import com.lzy.lostandfound.service.ICommentLikeService;
 import com.lzy.lostandfound.service.ICommentService;
+import com.lzy.lostandfound.service.IFindInfoService;
+import com.lzy.lostandfound.service.ILostInfoService;
+import com.lzy.lostandfound.service.NoticeHelperService;
 import com.lzy.lostandfound.service.IUserService;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
@@ -40,6 +45,12 @@ public class CommentController {
     private ICommentLikeService commentLikeService;
     @Autowired
     private IUserService userService;
+    @Autowired
+    private ILostInfoService lostInfoService;
+    @Autowired
+    private IFindInfoService findInfoService;
+    @Autowired
+    private NoticeHelperService noticeHelperService;
 
     /**
      * 添加评论
@@ -62,6 +73,9 @@ public class CommentController {
         comment.setAvatar(userService.getById(userId).getAvatar());
 
         boolean saved = commentService.save(comment);
+        if (saved) {
+            notifyPublisherOnComment(request, userId, userMap.get("username"));
+        }
         return saved ? Result.success("评论成功") : Result.error("评论失败");
     }
 
@@ -177,6 +191,38 @@ public class CommentController {
             commentService.updateById(comment);
             return Result.success("点赞成功");
         }
+    }
+
+    private void notifyPublisherOnComment(CommentCreateRequest request, String commenterId, Object commenterNameObj) {
+        String infoType = request.getInfoType() == null ? "" : request.getInfoType().trim().toLowerCase();
+        String publisherId = null;
+        String itemName = "该信息";
+
+        if ("lost".equals(infoType)) {
+            LostInfo lostInfo = lostInfoService.getById(request.getInfoId());
+            if (lostInfo != null) {
+                publisherId = lostInfo.getUserId();
+                itemName = lostInfo.getName();
+            }
+        } else if ("find".equals(infoType)) {
+            FindInfo findInfo = findInfoService.getById(request.getInfoId());
+            if (findInfo != null) {
+                publisherId = findInfo.getUserId();
+                itemName = findInfo.getName();
+            }
+        }
+
+        if (publisherId == null || publisherId.equals(commenterId)) {
+            return;
+        }
+        String commenterName = commenterNameObj == null ? "用户" : String.valueOf(commenterNameObj);
+        noticeHelperService.sendNotice(
+                publisherId,
+                "您的信息有新评论",
+                commenterName + " 评论了「" + itemName + "」：" + request.getContent(),
+                "COMMENT",
+                request.getInfoId()
+        );
     }
 
 

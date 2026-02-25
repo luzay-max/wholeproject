@@ -13,8 +13,11 @@ const LostList = () => import('../views/LostList.vue');
 const FindList = () => import('../views/FindList.vue');
 const InfoDetailPage = () => import('../views/InfoDetailPage.vue');
 const HonorBoard = () => import('../views/HonorBoard.vue');
+const ClaimCenter = () => import('../views/ClaimCenter.vue');
+const NoticeCenter = () => import('../views/NoticeCenter.vue');
 
 // 管理员页面组件
+const AdminDashboard = () => import('../views/Admin/Dashboard.vue');
 const InfoCenter = () => import('../views/Admin/InfoCenter.vue');
 const UserManagement = () => import('../views/Admin/UserManagement.vue');
 const CommentManagement = () => import('../views/Admin/CommentManagement.vue');
@@ -101,6 +104,24 @@ const routes = [
     }
   },
   {
+    path: '/claim-center',
+    name: 'ClaimCenter',
+    component: ClaimCenter,
+    meta: {
+      title: '认领中心 - 校园失物招领平台',
+      requiresAuth: true
+    }
+  },
+  {
+    path: '/notice-center',
+    name: 'NoticeCenter',
+    component: NoticeCenter,
+    meta: {
+      title: '通知中心 - 校园失物招领平台',
+      requiresAuth: true
+    }
+  },
+  {
     path: '/honor-board',
     name: 'HonorBoard',
     component: HonorBoard,
@@ -128,6 +149,12 @@ const routes = [
       {
         path: '',
         redirect: '/admin/info'
+      },
+      {
+        path: 'dashboard',
+        name: 'AdminDashboard',
+        component: AdminDashboard,
+        meta: { title: '管理看板 - 校园失物招领平台' }
       },
       { 
         path: 'info', 

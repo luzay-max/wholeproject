@@ -153,6 +153,26 @@
                 <el-icon><Check /></el-icon>
                 {{ infoType === 'lost' ? '标记已找回' : '标记已认领' }}
               </el-button>
+
+              <el-button
+                type="warning"
+                size="large"
+                @click="handleApplyClaim"
+                v-if="canApplyClaim"
+                class="status-btn"
+              >
+                申请认领
+              </el-button>
+
+              <el-button
+                type="warning"
+                size="large"
+                @click="handleReportFound"
+                v-if="canReportFound"
+                class="status-btn"
+              >
+                我找到了
+              </el-button>
             </div>
           </div>
         </el-card>
@@ -175,7 +195,7 @@
 
 <script>
 import { ref, computed, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   Clock, 
   ZoomIn, 
@@ -189,6 +209,7 @@ import {
 } from '@element-plus/icons-vue'
 import { getLostDetail, updateLostStatus } from '../../api/lostApi'
 import { getFindDetail, updateFindStatus } from '../../api/findApi'
+import { applyClaim, reportFound } from '../../api/claimApi'
 import { useUserStore } from '../../store/userStore';
 import { useInfoStore } from '../../store/infoStore';
 import { getDicts } from '../../api/system/dict/data';
@@ -253,6 +274,16 @@ export default {
 
     const canShowActions = computed(() => userStore.isLoggedIn && infoDetail.value.status === 'APPROVED')
     const canUpdateStatus = computed(() => canShowActions.value && userStore.userInfo.id === infoDetail.value.userId)
+    const canApplyClaim = computed(() =>
+      canShowActions.value
+      && props.infoType === 'find'
+      && userStore.userInfo.id !== infoDetail.value.userId
+    )
+    const canReportFound = computed(() =>
+      canShowActions.value
+      && props.infoType === 'lost'
+      && userStore.userInfo.id !== infoDetail.value.userId
+    )
 
     function getCategoryIcon(value) {
       const typeKey = String(value ?? '').trim().toUpperCase()
@@ -314,8 +345,7 @@ export default {
       }
       navigator.clipboard.writeText(phone).then(() => {
         ElMessage.success('电话号码已复制: ' + phone);
-      }).catch(err => {
-        console.error('Copy failed:', err);
+      }).catch(() => {
         ElMessage.error('复制失败，请手动复制');
       });
     }
@@ -333,13 +363,54 @@ export default {
       }
     }
 
+    async function handleApplyClaim() {
+      try {
+        const { value } = await ElMessageBox.prompt('可选填写申请说明（最多200字）', '申请认领', {
+          confirmButtonText: '提交申请',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：身份证明、物品特征等',
+          inputPattern: /^$|^.{1,200}$/,
+          inputErrorMessage: '申请说明最多200字'
+        });
+        await applyClaim({
+          itemType: props.infoType,
+          itemId: props.infoId,
+          applyNote: value || ''
+        });
+        ElMessage.success('认领申请已提交，请前往认领中心继续操作');
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        ElMessage.error(error?.message || '认领申请失败');
+      }
+    }
+
+    async function handleReportFound() {
+      try {
+        const { value } = await ElMessageBox.prompt('可选填写线索说明（最多200字）', '我找到了', {
+          confirmButtonText: '提醒发布者',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：大致位置、识别特征、可联系时间',
+          inputPattern: /^$|^.{1,200}$/,
+          inputErrorMessage: '说明最多200字'
+        });
+        await reportFound({
+          itemId: props.infoId,
+          note: value || ''
+        });
+        ElMessage.success('已提醒发布者，请等待对方联系');
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        ElMessage.error(error?.message || '提醒失败');
+      }
+    }
+
     watch(() => props.infoId, loadDetail, { immediate: true })
 
     return {
       infoDetail, filteredImages, imageGridClass, loading, dialogVisible, dialogImageUrl,
-      canShowActions, canUpdateStatus, getCategoryLabel, getCategoryIcon,
+      canShowActions, canUpdateStatus, canApplyClaim, canReportFound, getCategoryLabel, getCategoryIcon,
       formatDate, previewImage, 
-      handleContact, handleUpdateStatus,
+      handleContact, handleUpdateStatus, handleApplyClaim, handleReportFound,
       info_status, info_type
     }
   }

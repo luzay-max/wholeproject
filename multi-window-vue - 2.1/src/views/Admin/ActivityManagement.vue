@@ -251,6 +251,20 @@ export default {
       return '';
     };
 
+    const actionLabelMap = {
+      PUBLISH: '发布',
+      UPDATE_STATUS: '更新状态',
+      COMMENT: '评论',
+      HIDE: '下架',
+      RECOVER: '恢复',
+      CLAIM_APPLY: '认领申请',
+      CLAIM_PROOF: '提交认领凭证',
+      CLAIM_CONFIRM: '认领通过',
+      CLAIM_REJECT: '认领驳回',
+      CLAIM_COMPLETE: '完成归还',
+      REPORT_FOUND: '反馈找到失物'
+    };
+
     const inferItemTypeFromContent = (content) => {
       const text = toCleanString(content);
       if (!text) return '';
@@ -263,6 +277,30 @@ export default {
       const directValue = toCleanString(row?.action ?? row?.actionType ?? row?.action_type);
       if (directValue) return directValue.toUpperCase();
       return inferActionFromContent(row?.content);
+    };
+
+    const appendMissingActionOptions = (rows = []) => {
+      const existing = new Set(
+        (activity_action.value || [])
+          .map((item) => toCleanString(item?.value ?? item?.dictValue).toUpperCase())
+          .filter(Boolean)
+      );
+      const extra = [];
+      for (const row of rows) {
+        const action = normalizeActionValue(row);
+        if (!action || existing.has(action)) continue;
+        existing.add(action);
+        extra.push({
+          dictValue: action,
+          dictLabel: actionLabelMap[action] || action,
+          value: action,
+          label: actionLabelMap[action] || action,
+          listClass: 'info'
+        });
+      }
+      if (extra.length) {
+        activity_action.value = [...activity_action.value, ...extra];
+      }
     };
 
     const normalizeItemTypeValue = (row) => {
@@ -393,6 +431,7 @@ export default {
         const res = await getActivities(params);
         const rawList = res?.data?.list || res?.data?.records || [];
         activityList.value = rawList.map((item) => normalizeActivityRecord(item));
+        appendMissingActionOptions(activityList.value);
         const totalFromApi = res?.data?.total ?? res?.data?.totalCount ?? res?.data?.count;
         pagination.total = Number(totalFromApi ?? activityList.value.length ?? 0);
       } catch (error) {
@@ -508,13 +547,17 @@ export default {
     onMounted(() => {
       updateViewportState();
       window.addEventListener('resize', updateViewportState);
-      loadActivityList();
-      getDicts('activity_action').then(res => {
-        activity_action.value = res.data;
-      });
-      getDicts('activity_item_type').then(res => {
-        activity_item_type.value = res.data;
-      });
+      Promise.all([
+        getDicts('activity_action'),
+        getDicts('activity_item_type')
+      ])
+        .then(([actionRes, itemTypeRes]) => {
+          activity_action.value = actionRes?.data || [];
+          activity_item_type.value = itemTypeRes?.data || [];
+        })
+        .finally(() => {
+          loadActivityList();
+        });
     });
 
     onBeforeUnmount(() => {

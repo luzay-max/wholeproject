@@ -69,22 +69,77 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         LogUtil.info("统计周期: " + startDateTime + " ~ " + endDateTime);
 
         // 2. 统计每个用户完成的招领数量
+        // 优先以认领流程完成时间(claim_order.complete_time)为准，
+        // 同时兼容未走认领流程、直接将招领置为 SOLVED 的数据。
         String sql = """
+            WITH completed_from_claim AS (
+                SELECT
+                    co.publisher_user_id AS user_id,
+                    co.item_id AS item_id,
+                    co.complete_time AS completed_at
+                FROM claim_order co
+                WHERE co.status = 'COMPLETED'
+                  AND LOWER(co.item_type) = 'find'
+                  AND co.complete_time >= ? AND co.complete_time < ?
+                  AND IFNULL(co.is_deleted, 0) = 0
+            ),
+            completed_from_direct AS (
+                SELECT
+                    fi.user_id AS user_id,
+                    fi.id AS item_id,
+                    fi.update_time AS completed_at
+                FROM find_info fi
+                WHERE fi.status = 'SOLVED'
+                  AND fi.update_time >= ? AND fi.update_time < ?
+                  AND IFNULL(fi.is_deleted, 0) = 0
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM claim_order co
+                      WHERE co.item_id = fi.id
+                        AND LOWER(co.item_type) = 'find'
+                        AND co.status = 'COMPLETED'
+                        AND IFNULL(co.is_deleted, 0) = 0
+                  )
+            )
             SELECT
-                fi.user_id,
-                COUNT(*) as completed_count,
-                MAX(fi.update_time) as last_completed_at
-            FROM find_info fi
-            WHERE fi.status = 'SOLVED'
-            AND fi.update_time >= ? AND fi.update_time < ?
-            GROUP BY fi.user_id
+                x.user_id,
+                COUNT(*) AS completed_count,
+                MAX(x.completed_at) AS last_completed_at
+            FROM (
+                SELECT * FROM completed_from_claim
+                UNION ALL
+                SELECT * FROM completed_from_direct
+            ) x
+            GROUP BY x.user_id
             ORDER BY completed_count DESC, last_completed_at ASC
             """;
 
-        List<Map<String, Object>> results = jdbcTemplate.queryForList(sql,
-            startDateTime, endDateTime);
+        List<Map<String, Object>> results;
+        try {
+            results = jdbcTemplate.queryForList(sql, startDateTime, endDateTime, startDateTime, endDateTime);
+        } catch (Exception ex) {
+            // 兼容历史库没有 claim_order 的情况，回退到旧统计口径
+            LogUtil.warn("光荣榜统计使用兼容模式（仅 find_info）: " + ex.getMessage());
+            String legacySql = """
+                SELECT
+                    fi.user_id,
+                    COUNT(*) as completed_count,
+                    MAX(fi.update_time) as last_completed_at
+                FROM find_info fi
+                WHERE fi.status = 'SOLVED'
+                  AND fi.update_time >= ? AND fi.update_time < ?
+                  AND IFNULL(fi.is_deleted, 0) = 0
+                GROUP BY fi.user_id
+                ORDER BY completed_count DESC, last_completed_at ASC
+                """;
+            results = jdbcTemplate.queryForList(legacySql, startDateTime, endDateTime);
+        }
 
         LogUtil.info("找到 " + results.size() + " 位用户有完成的招领记录");
+        int totalCompletedCount = results.stream()
+                .mapToInt(row -> ((Number) row.get("completed_count")).intValue())
+                .sum();
+        LogUtil.info("本周期完成总次数: " + totalCompletedCount);
 
         // 3. 查询所有用户信息（用于获取用户名、姓名、头像等）
         List<User> allUsers = userMapper.selectList(new LambdaQueryWrapper<>());
@@ -101,7 +156,7 @@ public class HonorBoardGenerateService extends ServiceImpl<FindInfoMapper, FindI
         period.setPeriodStart(startDateTime);
         period.setPeriodEnd(endDateTime);
         period.setTopN(10); // 默认显示前10名
-        period.setTotalCompletedCount(results.size());
+        period.setTotalCompletedCount(totalCompletedCount);
         period.setStatus("PENDING");
         period.setCreatedAt(LocalDateTime.now());
         period.setUpdatedAt(LocalDateTime.now());

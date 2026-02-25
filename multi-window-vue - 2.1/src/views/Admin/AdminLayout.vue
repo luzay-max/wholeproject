@@ -23,6 +23,10 @@
             <el-icon><List /></el-icon>
             <span>信息管理中心</span>
           </el-menu-item>
+          <el-menu-item index="/admin/dashboard">
+            <el-icon><DataAnalysis /></el-icon>
+            <span>管理看板</span>
+          </el-menu-item>
           <el-menu-item index="/admin/users">
             <el-icon><User /></el-icon>
             <span>用户管理</span>
@@ -124,7 +128,7 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '../../store/userStore';
-import { Platform, Checked, User, List, ChatDotRound, Trophy, Operation, DocumentChecked, Monitor, Menu, House } from '@element-plus/icons-vue';
+import { Platform, DataAnalysis, User, List, ChatDotRound, Trophy, Operation, DocumentChecked, Monitor, Menu, House } from '@element-plus/icons-vue';
 
 const route = useRoute();
 const router = useRouter();
