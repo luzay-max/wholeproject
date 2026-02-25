@@ -1,6 +1,7 @@
 package com.lzy.lostandfound.entity;
 
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
@@ -38,6 +39,12 @@ public class CommentLike implements Serializable {
      */
     private LocalDateTime createTime;
 
+    /**
+     * 逻辑删除（0未删 1已删）
+     */
+    @TableLogic
+    private Integer isDeleted;
+
     public String getId() {
         return id;
     }
@@ -70,6 +77,14 @@ public class CommentLike implements Serializable {
         this.createTime = createTime;
     }
 
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
     @Override
     public String toString() {
         return "CommentLike{" +
@@ -77,6 +92,7 @@ public class CommentLike implements Serializable {
             ", commentId = " + commentId +
             ", userId = " + userId +
             ", createTime = " + createTime +
+            ", isDeleted = " + isDeleted +
             "}";
     }
 }

@@ -16,11 +16,12 @@ export const getOssSignature = async () => {
 
 // 上传文件到OSS
 export const uploadFileToOss = async (file, type = 'image') => {
+  const enableMockOss = import.meta.env.DEV && import.meta.env.VITE_ENABLE_MOCK_OSS === 'true';
+
   try {
-    // 开发环境使用模拟上传
-    const isDev = import.meta.env.DEV;
-    if (isDev) {
-      console.log('开发环境：使用模拟文件上传');
+    // 仅在开发环境显式开启 VITE_ENABLE_MOCK_OSS=true 时使用模拟地址
+    if (enableMockOss) {
+      console.log('开发环境：使用 mock OSS 地址');
       // 构建模拟的文件URL
       const timestamp = new Date().getTime();
       const fileExt = file.name.split('.').pop();
@@ -35,7 +36,7 @@ export const uploadFileToOss = async (file, type = 'image') => {
       return new Promise(resolve => setTimeout(() => resolve(mockUrl), 300));
     }
     
-    // 生产环境正常获取OSS签名
+    // 默认走真实 OSS 上传流程（生产环境严格禁用 mock 回退）
     const signature = await getOssSignature();
     
     // 构建上传路径
@@ -67,13 +68,6 @@ export const uploadFileToOss = async (file, type = 'image') => {
     }
   } catch (error) {
     console.error('OSS文件上传失败:', error);
-    // 如果是开发环境且获取签名失败，仍然返回模拟URL
-    const isDev = import.meta.env.DEV;
-    if (isDev) {
-      const mockUrl = `https://mock-oss.example.com/backup_image_${Date.now()}.jpg`;
-      console.log('签名获取失败，使用备用模拟URL:', mockUrl);
-      return mockUrl;
-    }
     throw error;
   }
 };

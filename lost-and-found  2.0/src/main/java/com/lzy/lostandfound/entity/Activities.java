@@ -1,6 +1,7 @@
 package com.lzy.lostandfound.entity;
 
 
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -58,6 +59,12 @@ public class Activities implements Serializable {
      */
     private LocalDateTime createTime;
 
+    /**
+     * 逻辑删除（0未删 1已删）
+     */
+    @TableLogic
+    private Integer isDeleted;
+
     public String getId() {
         return id;
     }
@@ -114,6 +121,14 @@ public class Activities implements Serializable {
         this.createTime = createTime;
     }
 
+    public Integer getIsDeleted() {
+        return isDeleted;
+    }
+
+    public void setIsDeleted(Integer isDeleted) {
+        this.isDeleted = isDeleted;
+    }
+
     @Override
     public String toString() {
         return "Activities{" +
@@ -124,6 +139,7 @@ public class Activities implements Serializable {
             ", itemId = " + itemId +
             ", content = " + content +
             ", createTime = " + createTime +
+            ", isDeleted = " + isDeleted +
             "}";
     }
 }

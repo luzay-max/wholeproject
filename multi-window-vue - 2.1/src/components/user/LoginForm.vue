@@ -10,7 +10,7 @@
       <el-input
         ref="usernameRef"
         v-model="form.username"
-        placeholder="请输入用户名/手机号"
+        placeholder="请输入账号或用户名"
         size="large"
         class="custom-input"
       >
@@ -119,7 +119,7 @@ export default {
     
     const rules = {
       username: [
-        { required: true, message: '请输入用户名', trigger: 'blur' }
+        { required: true, message: '请输入账号或用户名', trigger: 'blur' }
       ],
       password: [
         { required: true, message: '请输入密码', trigger: 'blur' }

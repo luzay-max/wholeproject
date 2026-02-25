@@ -14,8 +14,8 @@ public class RegisterRequest {
     private String username;
 
     @NotBlank(message = "password required")
-    @Size(min = 6, max = 20, message = "password 6-20")
-    @Pattern(regexp = "^(?![0-9]+$)(?![a-zA-Z]+$)[0-9A-Za-z]{6,20}$", message = "invalid password")
+    @Size(min = 8, max = 20, message = "password 8-20")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,20}$", message = "invalid password")
     private String password;
 
     @NotBlank(message = "confirmPassword required")

@@ -12,9 +12,9 @@
         </template>
         
         <div class="tab-content">
-          <!-- 瀹℃牳绛涢€?-->
+          <!-- 审核筛选 -->
           <div class="admin-search-card filter-bar">
-            <DictSelect v-model="auditFilter.type" dict-type="info_type" placeholder="淇℃伅绫诲瀷" clearable style="width: 150px" />
+            <DictSelect v-model="auditFilter.type" dict-type="info_type" placeholder="信息类型" clearable style="width: 150px" />
             <el-input 
               v-model="auditFilter.keyword" 
               placeholder="搜索物品名称/发布者"
@@ -479,7 +479,7 @@ const fetchAuditData = async () => {
       const data = res.data || {};
       auditList.value = data.list || [];
       auditPagination.total = data.total || 0;
-      pendingCount.value = data.total || 0; // 閺囧瓨鏌婂鑺ョ垼
+      pendingCount.value = data.total || 0; // 同步待审核数量
     }
   } catch (error) {
     console.error('Fetch audit failed', error);

@@ -20,7 +20,4 @@ public class UserUpdateRequest {
     @Email(message = "invalid email")
     @Size(max = 100, message = "email max 100")
     private String email;
-
-    @Size(min = 1, max = 50, message = "account name 1-50")
-    private String accountName;
 }

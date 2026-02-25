@@ -3,6 +3,10 @@ package com.lzy.lostandfound.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.lzy.lostandfound.entity.*;
+import com.lzy.lostandfound.mapper.ActivitiesMapper;
+import com.lzy.lostandfound.mapper.CommentMapper;
+import com.lzy.lostandfound.mapper.HonorPeriodItemMapper;
+import com.lzy.lostandfound.mapper.HonorPeriodMapper;
 import com.lzy.lostandfound.service.*;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.HonorBoardItemVO;
@@ -51,6 +55,14 @@ public class AdminController {
     private IHonorPeriodItemService honorPeriodItemService;
     @Autowired
     private IStudentWhitelistService studentWhitelistService;
+    @Autowired
+    private ActivitiesMapper activitiesMapper;
+    @Autowired
+    private CommentMapper commentMapper;
+    @Autowired
+    private HonorPeriodMapper honorPeriodMapper;
+    @Autowired
+    private HonorPeriodItemMapper honorPeriodItemMapper;
 
     @GetMapping("/admin/honor/periods")
     public Result honorPeriods(@RequestParam(defaultValue = "1") Integer page,
@@ -393,6 +405,21 @@ public class AdminController {
         }
     }
 
+    @PutMapping("/admin/honor/items/{id}/recover")
+    @Log("RECOVER_HONOR_ITEM")
+    public Result recoverHonorPeriodItem(@PathVariable String id) {
+        try {
+            int restored = honorPeriodItemMapper.restoreById(id);
+            if (restored > 0) {
+                return Result.success("恢复榜单成员成功");
+            }
+            return Result.error("榜单成员不存在或无需恢复");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("恢复榜单成员失败: " + e.getMessage());
+        }
+    }
+
     @DeleteMapping("/admin/honor/periods/{periodId}")
     @Log("DELETE_HONOR_PERIOD")
     public Result deleteHonorPeriod(@PathVariable String periodId) {
@@ -422,6 +449,38 @@ public class AdminController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("删除光荣榜失败：" + e.getMessage());
+        }
+    }
+
+    @PutMapping("/admin/honor/periods/{periodId}/recover")
+    @Log("RECOVER_HONOR_PERIOD")
+    public Result recoverHonorPeriod(@PathVariable String periodId) {
+        try {
+            if (periodId == null || periodId.isEmpty()) {
+                return Result.error("periodId不能为空");
+            }
+
+            int restoredPeriod = honorPeriodMapper.restoreById(periodId);
+            int restoredItems = honorPeriodItemMapper.restoreByPeriodId(periodId);
+
+            if (restoredPeriod > 0) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("restoredPeriod", restoredPeriod);
+                data.put("restoredItems", restoredItems);
+                return Result.success(data);
+            }
+
+            if (restoredItems > 0) {
+                Map<String, Object> data = new HashMap<>();
+                data.put("restoredPeriod", 0);
+                data.put("restoredItems", restoredItems);
+                return Result.success(data);
+            }
+
+            return Result.error("光荣榜周期不存在或无需恢复");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("恢复光荣榜失败: " + e.getMessage());
         }
     }
 
@@ -1476,6 +1535,21 @@ public class AdminController {
         }
     }
 
+    @PutMapping("/admin/comments/{id}/recover")
+    @Log("RECOVER_COMMENT")
+    public Result recoverComment(@PathVariable String id) {
+        try {
+            int restored = commentMapper.restoreById(id);
+            if (restored > 0) {
+                return Result.success("恢复评论成功");
+            }
+            return Result.error("评论不存在或无需恢复");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("恢复评论失败");
+        }
+    }
+
     /**
      * 获取评论详情
      */
@@ -1571,6 +1645,26 @@ public class AdminController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("批量删除失败");
+        }
+    }
+
+    @PutMapping("/admin/comments/batch/recover")
+    @Log("BATCH_RECOVER_COMMENTS")
+    public Result batchRecoverComments(@RequestBody Map<String, List<String>> params) {
+        try {
+            List<String> ids = params == null ? null : params.get("ids");
+            if (ids == null || ids.isEmpty()) {
+                return Result.error("请选择要恢复的评论");
+            }
+
+            int restored = commentMapper.restoreBatchByIds(ids);
+            if (restored > 0) {
+                return Result.success("批量恢复成功");
+            }
+            return Result.error("没有可恢复的评论");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("批量恢复失败");
         }
     }
 
@@ -1729,6 +1823,41 @@ public class AdminController {
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error("批量删除失败");
+        }
+    }
+
+    @PutMapping("/admin/activities/{id}/recover")
+    @Log("RECOVER_ACTIVITY")
+    public Result recoverActivity(@PathVariable String id) {
+        try {
+            int restored = activitiesMapper.restoreById(id);
+            if (restored > 0) {
+                return Result.success("恢复活动记录成功");
+            }
+            return Result.error("活动记录不存在或无需恢复");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("恢复活动记录失败");
+        }
+    }
+
+    @PutMapping("/admin/activities/batch/recover")
+    @Log("BATCH_RECOVER_ACTIVITIES")
+    public Result batchRecoverActivities(@RequestBody Map<String, List<String>> params) {
+        try {
+            List<String> ids = params == null ? null : params.get("ids");
+            if (ids == null || ids.isEmpty()) {
+                return Result.error("请选择要恢复的记录");
+            }
+
+            int restored = activitiesMapper.restoreBatchByIds(ids);
+            if (restored > 0) {
+                return Result.success("批量恢复成功");
+            }
+            return Result.error("没有可恢复的活动记录");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Result.error("批量恢复失败");
         }
     }
 

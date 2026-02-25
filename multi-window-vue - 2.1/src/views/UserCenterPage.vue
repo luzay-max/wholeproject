@@ -17,7 +17,7 @@
           </div>
         </div>
         <div class="user-info">
-          <h2 class="username">{{ userInfo.username }}</h2>
+          <h2 class="username">{{ userInfo.username || userInfo.accountName || '未设置' }}</h2>
           <DictTag :options="user_role" :value="userInfo.role" class="role-tag" />
           <p class="register-time">{{ formatDate(userInfo.createTime) }}</p>
         </div>
@@ -25,14 +25,14 @@
           <div class="stat-card" @click="activeTab = 'publishes'">
             <div class="stat-icon lost"><el-icon><Search /></el-icon></div>
             <div class="stat-content">
-              <span class="stat-number">{{ myLostList.length }}</span>
+              <span class="stat-number">{{ lostTotal }}</span>
               <span class="stat-label">失物发布</span>
             </div>
           </div>
           <div class="stat-card" @click="activeTab = 'publishes'">
             <div class="stat-icon find"><el-icon><Bell /></el-icon></div>
             <div class="stat-content">
-              <span class="stat-number">{{ myFindList.length }}</span>
+              <span class="stat-number">{{ findTotal }}</span>
               <span class="stat-label">招领发布</span>
             </div>
           </div>
@@ -64,7 +64,7 @@
           </div>
           <div class="header-tab" :class="{ active: activeTab === 'publishes' }" @click="activeTab = 'publishes'">
             <el-icon><Document /></el-icon><span>我的发布</span>
-            <el-badge :value="myLostList.length + myFindList.length" class="tab-badge" type="primary" />
+            <el-badge :value="publishTotal" class="tab-badge" type="primary" />
           </div>
           <div class="header-tab" :class="{ active: activeTab === 'settings' }" @click="activeTab = 'settings'">
             <el-icon><Setting /></el-icon><span>用户设置</span>
@@ -85,8 +85,11 @@
           
           <el-form v-if="isEditing" :model="editForm" ref="formRef" :rules="rules" label-position="top" class="edit-form" v-focus-next="handleSave">
             <div class="form-grid">
-              <el-form-item label="账户名称" prop="accountName">
-                <el-input v-model="editForm.accountName" placeholder="请输入账户名称" />
+              <el-form-item label="登录账号" prop="accountName">
+                <el-input v-model="editForm.accountName" placeholder="登录账号不可修改" disabled />
+              </el-form-item>
+              <el-form-item label="昵称" prop="username">
+                <el-input v-model="editForm.username" placeholder="请输入昵称" />
               </el-form-item>
               <el-form-item label="真实姓名" prop="name">
                 <el-input v-model="editForm.name" placeholder="真实姓名不可修改" disabled />
@@ -112,7 +115,11 @@
               <div class="info-grid">
                 <div class="info-item">
                   <div class="info-icon name"><el-icon><User /></el-icon></div>
-                  <div class="info-content"><label>账户名称</label><span>{{ userInfo.accountName || '未设置' }}</span></div>
+                  <div class="info-content"><label>登录账号</label><span>{{ userInfo.accountName || '未设置' }}</span></div>
+                </div>
+                <div class="info-item">
+                  <div class="info-icon name"><el-icon><User /></el-icon></div>
+                  <div class="info-content"><label>昵称</label><span>{{ userInfo.username || '未设置' }}</span></div>
                 </div>
                 <div class="info-item">
                   <div class="info-icon name"><el-icon><User /></el-icon></div>
@@ -142,61 +149,89 @@
           </div>
           <div class="sub-tabs">
             <div class="sub-tab" :class="{ active: publishTab === 'lost' }" @click="publishTab = 'lost'">
-              <el-icon><Search /></el-icon><span>失物</span><el-tag size="small" type="warning">{{ myLostList.length }}</el-tag>
+              <el-icon><Search /></el-icon><span>失物</span><el-tag size="small" type="warning">{{ lostTotal }}</el-tag>
             </div>
             <div class="sub-tab" :class="{ active: publishTab === 'find' }" @click="publishTab = 'find'">
-              <el-icon><Bell /></el-icon><span>招领</span><el-tag size="small" type="success">{{ myFindList.length }}</el-tag>
+              <el-icon><Bell /></el-icon><span>招领</span><el-tag size="small" type="success">{{ findTotal }}</el-tag>
             </div>
           </div>
           
           <div v-if="publishTab === 'lost'" class="publish-list">
-            <div v-if="myLostList.length === 0" class="empty-state">
+            <div v-if="lostTotal === 0" class="empty-state">
               <el-icon size="60"><Search /></el-icon>
               <p>暂无失物发布</p>
               <el-button type="primary" @click="navigateToPublish('lost')"><el-icon><Plus /></el-icon>发布失物</el-button>
             </div>
-            <div v-else class="publish-grid">
-              <div v-for="item in myLostList" :key="item.id" class="publish-card" @click="viewDetail(item.id, 'lost')">
-                <div class="card-image">
-                  <el-image v-if="getItemImage(item)" :src="getItemImage(item)" fit="cover">
-                    <template #error>
-                      <div class="no-image">暂无图片</div>
-                    </template>
-                  </el-image>
-                  <div v-else class="no-image">暂无图片</div>
-                  <DictTag :options="info_status" :value="item.status" class="status-tag" />
+            <div v-else>
+              <div class="publish-grid">
+                <div v-for="item in myLostList" :key="item.id" class="publish-card" @click="viewDetail(item.id, 'lost')">
+                  <div class="card-image">
+                    <el-image v-if="getItemImage(item)" :src="getItemImage(item)" fit="cover">
+                      <template #error>
+                        <div class="no-image">暂无图片</div>
+                      </template>
+                    </el-image>
+                    <div v-else class="no-image">暂无图片</div>
+                    <DictTag :options="info_status" :value="item.status" class="status-tag" />
+                  </div>
+                  <div class="card-content">
+                    <h4>{{ item.name }}</h4>
+                    <p><el-icon><Location /></el-icon>{{ item.location }}</p>
+                    <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
+                  </div>
                 </div>
-                <div class="card-content">
-                  <h4>{{ item.name }}</h4>
-                  <p><el-icon><Location /></el-icon>{{ item.location }}</p>
-                  <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
-                </div>
+              </div>
+              <div class="publish-pagination">
+                <el-pagination
+                  v-model:current-page="lostPagination.page"
+                  v-model:page-size="lostPagination.pageSize"
+                  :page-sizes="[8, 16, 24, 40]"
+                  :total="lostTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  background
+                  @current-change="handleLostPageChange"
+                  @size-change="handleLostPageSizeChange"
+                />
               </div>
             </div>
           </div>
           
           <div v-if="publishTab === 'find'" class="publish-list">
-            <div v-if="myFindList.length === 0" class="empty-state">
+            <div v-if="findTotal === 0" class="empty-state">
               <el-icon size="60"><Bell /></el-icon>
               <p>暂无招领发布</p>
               <el-button type="primary" @click="navigateToPublish('find')"><el-icon><Plus /></el-icon>发布招领</el-button>
             </div>
-            <div v-else class="publish-grid">
-              <div v-for="item in myFindList" :key="item.id" class="publish-card" @click="viewDetail(item.id, 'find')">
-                <div class="card-image">
-                  <el-image v-if="getItemImage(item)" :src="getItemImage(item)" fit="cover">
-                    <template #error>
-                      <div class="no-image">暂无图片</div>
-                    </template>
-                  </el-image>
-                  <div v-else class="no-image">暂无图片</div>
-                  <DictTag :options="info_status" :value="item.status" class="status-tag" />
+            <div v-else>
+              <div class="publish-grid">
+                <div v-for="item in myFindList" :key="item.id" class="publish-card" @click="viewDetail(item.id, 'find')">
+                  <div class="card-image">
+                    <el-image v-if="getItemImage(item)" :src="getItemImage(item)" fit="cover">
+                      <template #error>
+                        <div class="no-image">暂无图片</div>
+                      </template>
+                    </el-image>
+                    <div v-else class="no-image">暂无图片</div>
+                    <DictTag :options="info_status" :value="item.status" class="status-tag" />
+                  </div>
+                  <div class="card-content">
+                    <h4>{{ item.name }}</h4>
+                    <p><el-icon><Location /></el-icon>{{ item.location }}</p>
+                    <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
+                  </div>
                 </div>
-                <div class="card-content">
-                  <h4>{{ item.name }}</h4>
-                  <p><el-icon><Location /></el-icon>{{ item.location }}</p>
-                  <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
-                </div>
+              </div>
+              <div class="publish-pagination">
+                <el-pagination
+                  v-model:current-page="findPagination.page"
+                  v-model:page-size="findPagination.pageSize"
+                  :page-sizes="[8, 16, 24, 40]"
+                  :total="findTotal"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  background
+                  @current-change="handleFindPageChange"
+                  @size-change="handleFindPageSizeChange"
+                />
               </div>
             </div>
           </div>
@@ -233,7 +268,7 @@
           <el-input v-model="passwordForm.oldPassword" type="password" show-password placeholder="请输入当前密码" />
         </el-form-item>
         <el-form-item label="新密码" prop="newPassword">
-          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="6-20位字符" />
+          <el-input v-model="passwordForm.newPassword" type="password" show-password placeholder="8-20位字母和数字" />
         </el-form-item>
         <el-form-item label="确认密码" prop="confirmPassword">
           <el-input v-model="passwordForm.confirmPassword" type="password" show-password placeholder="再次输入新密码" />
@@ -250,7 +285,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Phone, Message, Document, Search, Bell, Location, Clock, Edit, Close, Camera, Check, Plus, ArrowRight, CircleCheck, Medal, Star, Calendar, Setting, UserFilled, Postcard, OfficeBuilding, DocumentCopy, Picture, View, Lock, Delete } from '@element-plus/icons-vue';
@@ -260,6 +295,7 @@ import { getUserLostList } from '../api/lostApi';
 import { getUserFindList } from '../api/findApi';
 import { useUserStore } from '../store/userStore';
 import { getDicts } from '../api/system/dict/data';
+import { validatePassword } from '../utils/validators';
 import defaultAvatar from '../assets/images/1.png';
 import DictTag from '../components/Dict/DictTag.vue';
 
@@ -277,7 +313,7 @@ export default {
     const formRef = ref(null);
     
     const userInfo = ref({ id: null, username: '', accountName: '', name: '', phone: '', email: '', avatar: '', role: '', createTime: null, college: '' });
-    const editForm = reactive({ accountName: '', name: '', phone: '', email: '', college: '' });
+    const editForm = reactive({ accountName: '', username: '', name: '', phone: '', email: '', college: '' });
     // 修改密码相关
     const passwordDialogVisible = ref(false);
     const passwordFormRef = ref(null);
@@ -288,15 +324,20 @@ export default {
     });
     const myLostList = ref([]);
     const myFindList = ref([]);
+    const lostPagination = reactive({ page: 1, pageSize: 8, total: 0 });
+    const findPagination = reactive({ page: 1, pageSize: 8, total: 0 });
     
     const user_role = ref([]);
     const info_status = ref([]);
+    const lostTotal = computed(() => Number(lostPagination.total) || 0);
+    const findTotal = computed(() => Number(findPagination.total) || 0);
+    const publishTotal = computed(() => lostTotal.value + findTotal.value);
 
     const solvedCount = computed(() => {
       return myLostList.value.filter(i => i.status === 'SOLVED').length + myFindList.value.filter(i => i.status === 'SOLVED').length;
     });
     const activityLevel = computed(() => {
-      const total = myLostList.value.length + myFindList.value.length;
+      const total = publishTotal.value;
       if (total === 0) return 20;
       if (total <= 3) return 40;
       if (total <= 6) return 60;
@@ -311,9 +352,10 @@ export default {
     const isVip = computed(() => userInfo.value.role === 'ADMIN');
     
     const rules = reactive({
-      accountName: [
-        { required: true, message: '请输入账户名称', trigger: 'blur' },
-        { min: 1, max: 20, message: '账户名称长度应在 1 到 20 个字符之间', trigger: 'blur' }
+      username: [
+        { required: true, message: '请输入昵称', trigger: 'blur' },
+        { min: 3, max: 20, message: '昵称长度应在 3 到 20 个字符之间', trigger: 'blur' },
+        { pattern: /^[a-zA-Z0-9_]+$/, message: '昵称仅支持字母、数字和下划线', trigger: 'blur' }
       ],
       name: [
         { required: true, message: '请输入真实姓名', trigger: 'blur' },
@@ -333,7 +375,16 @@ export default {
       oldPassword: [{ required: true, message: '请输入当前密码', trigger: 'blur' }],
       newPassword: [
         { required: true, message: '请输入新密码', trigger: 'blur' },
-        { min: 6, max: 20, message: '密码长度在 6 到 20 个字符之间', trigger: 'blur' }
+        {
+          validator: (rule, value, callback) => {
+            if (!validatePassword(value)) {
+              callback(new Error('密码需8-20位，包含字母和数字'));
+            } else {
+              callback();
+            }
+          },
+          trigger: 'blur'
+        }
       ],
       confirmPassword: [
         { required: true, message: '请再次输入新密码', trigger: 'blur' },
@@ -362,18 +413,75 @@ export default {
         const res = await getUserInfo();
         if (res?.code === 0) {
           userInfo.value = res.data || {};
-          Object.assign(editForm, { accountName: userInfo.value.accountName || '', name: userInfo.value.name || '', phone: userInfo.value.phone || '', email: userInfo.value.email || '', college: userInfo.value.college || '' });
+          Object.assign(editForm, {
+            accountName: userInfo.value.accountName || '',
+            username: userInfo.value.username || '',
+            name: userInfo.value.name || '',
+            phone: userInfo.value.phone || '',
+            email: userInfo.value.email || '',
+            college: userInfo.value.college || ''
+          });
         }
       } catch (error) { console.error('加载用户信息失败:', error); }
       finally { loading.value = false; }
     };
     
+    const fetchLostPublishes = async () => {
+      try {
+        const res = await getUserLostList({
+          page: lostPagination.page,
+          pageSize: lostPagination.pageSize
+        });
+        const data = res?.data || {};
+        myLostList.value = Array.isArray(data.list) ? data.list : [];
+        lostPagination.total = Number(data.total) || 0;
+      } catch (error) {
+        console.error('加载失物发布列表失败:', error);
+      }
+    };
+
+    const fetchFindPublishes = async () => {
+      try {
+        const res = await getUserFindList({
+          page: findPagination.page,
+          pageSize: findPagination.pageSize
+        });
+        const data = res?.data || {};
+        myFindList.value = Array.isArray(data.list) ? data.list : [];
+        findPagination.total = Number(data.total) || 0;
+      } catch (error) {
+        console.error('加载招领发布列表失败:', error);
+      }
+    };
+
     const loadPublishes = async () => {
       try {
-        const [lostRes, findRes] = await Promise.all([getUserLostList({ page: 1, pageSize: 50 }), getUserFindList({ page: 1, pageSize: 50 })]);
-        myLostList.value = lostRes.data?.list || [];
-        myFindList.value = findRes.data?.list || [];
-      } catch (error) { console.error('加载发布列表失败:', error); }
+        await Promise.all([fetchLostPublishes(), fetchFindPublishes()]);
+      } catch (error) {
+        console.error('加载发布列表失败:', error);
+      }
+    };
+
+    const handleLostPageChange = (page) => {
+      lostPagination.page = page;
+      fetchLostPublishes();
+    };
+
+    const handleLostPageSizeChange = (pageSize) => {
+      lostPagination.page = 1;
+      lostPagination.pageSize = pageSize;
+      fetchLostPublishes();
+    };
+
+    const handleFindPageChange = (page) => {
+      findPagination.page = page;
+      fetchFindPublishes();
+    };
+
+    const handleFindPageSizeChange = (pageSize) => {
+      findPagination.page = 1;
+      findPagination.pageSize = pageSize;
+      fetchFindPublishes();
     };
     
     const triggerAvatarUpload = () => avatarInput.value?.click();
@@ -394,8 +502,25 @@ export default {
       try {
         await formRef.value.validate();
         loading.value = true;
-        await updateUserInfo(editForm);
-        Object.assign(userInfo.value, editForm);
+        const payload = {
+          username: editForm.username,
+          phone: editForm.phone,
+          email: editForm.email
+        };
+        const res = await updateUserInfo(payload);
+        if (res?.code === 0 && res?.data) {
+          userInfo.value = { ...userInfo.value, ...res.data };
+        } else {
+          Object.assign(userInfo.value, payload);
+        }
+        Object.assign(editForm, {
+          accountName: userInfo.value.accountName || '',
+          username: userInfo.value.username || '',
+          name: userInfo.value.name || '',
+          phone: userInfo.value.phone || '',
+          email: userInfo.value.email || '',
+          college: userInfo.value.college || ''
+        });
         ElMessage.success('信息更新成功');
         isEditing.value = false;
       } catch { ElMessage.error('信息更新失败'); }
@@ -456,6 +581,14 @@ export default {
       getDicts('info_status').then(res => info_status.value = res.data);
     });
 
+    watch(publishTab, (tab) => {
+      if (tab === 'lost') {
+        fetchLostPublishes();
+      } else {
+        fetchFindPublishes();
+      }
+    });
+
     return {
       loading,
       isEditing,
@@ -470,6 +603,11 @@ export default {
       passwordForm,
       myLostList,
       myFindList,
+      lostPagination,
+      findPagination,
+      lostTotal,
+      findTotal,
+      publishTotal,
       solvedCount,
       activityLevel,
       activityColor,
@@ -481,6 +619,12 @@ export default {
       formatDate,
       loadUserInfo,
       loadPublishes,
+      fetchLostPublishes,
+      fetchFindPublishes,
+      handleLostPageChange,
+      handleLostPageSizeChange,
+      handleFindPageChange,
+      handleFindPageSizeChange,
       triggerAvatarUpload,
       handleAvatarChange,
       handleSave,
@@ -935,6 +1079,14 @@ export default {
   gap: 16px;
 }
 
+.publish-pagination {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-secondary);
+  display: flex;
+  justify-content: flex-end;
+}
+
 .publish-card {
   background: #ffffff;
   border-radius: 14px;
@@ -1146,6 +1298,16 @@ export default {
 
   .publish-grid {
     grid-template-columns: 1fr;
+  }
+
+  .publish-pagination {
+    justify-content: center;
+  }
+
+  .publish-pagination :deep(.el-pagination) {
+    justify-content: center;
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
 }
 </style>

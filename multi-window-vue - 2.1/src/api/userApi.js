@@ -4,6 +4,7 @@ import request from './request';
 export const login = async (data) => {
   // 使用URLSearchParams序列化表单数据
   const params = new URLSearchParams();
+  params.append('accountName', data.username);
   params.append('username', data.username);
   params.append('password', data.password);
   if (data.captchaId) {
@@ -42,8 +43,7 @@ export const checkUsername = (username) => {
   });
 };
 
-// 获取用户信息
-// ???????
+// 获取验证码
 export const getCaptcha = () => {
   return request({
     url: '/auth/captcha',

@@ -54,8 +54,12 @@
 - **请求参数**：
   | 参数名 | 类型 | 必填 | 描述 |
   |--------|------|------|------|
-  | username | string | 是 | 用户名 |
+  | accountName | string | 否 | 登录账号（优先匹配） |
+  | username | string | 否 | 用户名（回退匹配） |
   | password | string | 是 | 密码 |
+  | captchaId | string | 是 | 验证码ID |
+  | captchaCode | string | 是 | 验证码内容 |
+  | rememberMe | boolean | 否 | 是否签发7天 refresh token |
 
 - **响应数据**：
 ```json
@@ -131,14 +135,18 @@
 ```
 
 ### 3.5 更新用户信息
-- **接口地址**：`/api/auth/update`
-- **请求方法**：PUT
+- **接口地址**：`/api/user/update`
+- **请求方法**：POST
 - **请求参数**：
   | 参数名 | 类型 | 必填 | 描述 |
   |--------|------|------|------|
-  | name | string | 是 | 真实姓名 |
-  | phone | string | 是 | 手机号 |
-  | email | string | 是 | 邮箱 |
+  | username | string | 否 | 昵称（可修改，需唯一） |
+  | phone | string | 否 | 手机号（可修改） |
+  | email | string | 否 | 邮箱（可修改） |
+
+- **字段可编辑性说明**：
+  - 可编辑：`username`、`phone`、`email`
+  - 不可编辑：`accountName`、`name`、`college`
 
 - **响应数据**：
 ```json
@@ -156,7 +164,7 @@
   | 参数名 | 类型 | 必填 | 描述 |
   |--------|------|------|------|
   | oldPassword | string | 是 | 旧密码 |
-  | newPassword | string | 是 | 新密码 |
+  | newPassword | string | 是 | 新密码（8-20位，字母+数字） |
 
 - **响应数据**：
 ```json
@@ -747,3 +755,54 @@
 3. **参数命名**：使用小驼峰命名，例如：`contactPhone`
 4. **版本控制**：建议在接口前缀中添加版本号，例如：`/api/v1/auth/login`
 5. **文档更新**：接口变更时，需及时更新文档
+
+## 12. 2026-02-25 增量变更（以代码实现为准）
+
+### 12.1 认证与账号模型
+
+#### 登录接口（支持账号或用户名）
+* **接口地址**：`/api/auth/login`
+* **请求方法**：POST（`application/x-www-form-urlencoded`）
+* **请求参数**：
+  | 参数名 | 类型 | 必填 | 描述 |
+  |--------|------|------|------|
+  | accountName | string | 否 | 登录账号（优先） |
+  | username | string | 否 | 用户名（回退匹配） |
+  | password | string | 是 | 密码 |
+  | captchaId | string | 是 | 验证码ID |
+  | captchaCode | string | 是 | 验证码内容 |
+  | rememberMe | boolean | 否 | 是否签发7天 refresh token |
+
+#### 个人信息更新接口（字段可编辑性）
+* **接口地址**：`/api/user/update`
+* **请求方法**：POST
+* **仅允许更新**：`username`、`phone`、`email`
+* **禁止普通用户更新**：`accountName`、`name`、`college`
+
+### 12.2 密码策略（端到端统一）
+* 注册与改密统一规则：`8-20` 位，且必须同时包含字母和数字。
+* 后端强校验入口：
+  * `POST /api/auth/register`
+  * `POST /api/auth/resetPassword`
+* `resetPassword` 同时兼容 `RequestParam` 与 JSON Body 传参。
+
+### 12.3 删除与恢复策略
+* 下列表采用逻辑删除并默认过滤：
+  * `activities`
+  * `comment`
+  * `comment_like`
+  * `honor_period`
+  * `honor_period_item`
+* `operation_log` 保持物理日志策略（无删除接口）。
+
+#### 新增恢复接口
+* `PUT /api/admin/comments/{id}/recover`
+* `PUT /api/admin/comments/batch/recover`
+* `PUT /api/admin/activities/{id}/recover`
+* `PUT /api/admin/activities/batch/recover`
+* `PUT /api/admin/honor/items/{id}/recover`
+* `PUT /api/admin/honor/periods/{periodId}/recover`
+
+### 12.4 数据迁移脚本
+* 新增脚本：`update_schema_v3_logic_delete.sql`
+* 作用：补齐上述5张表 `is_deleted` 字段、清洗 NULL、统一默认值为 `0`。

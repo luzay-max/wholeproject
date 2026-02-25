@@ -32,6 +32,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * <p>
@@ -47,6 +48,7 @@ import java.util.concurrent.TimeUnit;
 public class UserController {
     private static final String CAPTCHA_KEY_PREFIX = "captcha:";
     private static final long CAPTCHA_TTL_MINUTES = 2;
+    private static final Pattern PASSWORD_PATTERN = Pattern.compile("^(?=.*[A-Za-z])(?=.*\\d)[A-Za-z\\d]{8,20}$");
     @Autowired
     private IUserService userService;
     @Autowired
@@ -85,44 +87,60 @@ public class UserController {
     @Log("REGISTER")
     public Result register(@Valid @RequestBody RegisterRequest request) {
 
+         String username = request.getUsername() == null ? "" : request.getUsername().trim();
+         String phone = request.getPhone() == null ? "" : request.getPhone().trim();
+         String email = request.getEmail() == null ? "" : request.getEmail().trim();
+         String studentId = request.getStudentId() == null ? "" : request.getStudentId().trim();
+         String name = request.getName() == null ? "" : request.getName().trim();
+
          if (!request.getPassword().equals(request.getConfirmPassword())) {
-             return Result.error("passwords do not match");
+             return Result.error("两次输入密码不一致");
          }
 
          StudentWhitelist wl = studentWhitelistService.query()
-                 .eq("student_id", request.getStudentId())
-                 .eq("name", request.getName())
+                 .eq("student_id", studentId)
+                 .eq("name", name)
                  .one();
          if (wl == null) {
-             return Result.error("not in whitelist");
+             return Result.error("不在白名单中");
+         }
+
+         if (existsByColumn("username", username)) {
+             return Result.error("用户名已存在");
+         }
+         if (existsByColumn("account_name", username)) {
+             return Result.error("登录账号已存在");
+         }
+         if (existsByColumn("student_id", studentId)) {
+             return Result.error("学号/工号已存在");
+         }
+         if (existsByColumn("phone", phone)) {
+             return Result.error("手机号已存在");
+         }
+         if (existsByColumn("email", email)) {
+             return Result.error("邮箱已存在");
          }
 
          User user = new User();
-         user.setUsername(request.getUsername());
-         user.setAccountName(request.getUsername());
+         user.setUsername(username);
+         user.setAccountName(username);
          user.setPassword(request.getPassword());
-         user.setPhone(request.getPhone());
-         user.setEmail(request.getEmail());
-         user.setName(request.getName());
-         user.setStudentId(request.getStudentId());
+         user.setPhone(phone);
+         user.setEmail(email);
+         user.setName(name);
+         user.setStudentId(studentId);
          user.setCollege(wl.getCollege());
          user.setStatus(0);
          user.setRole(request.getRole().toUpperCase());
          user.setCreateTime(LocalDateTime.now());
          user.setUpdateTime(LocalDateTime.now());
 
-        User u= userService.query().eq("username",user.getUsername()).one();
-        if(u!=null){
-            return Result.error("username already exists");
-        }
-        else{
-            org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder encoder =
-                    new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
-            String bcrypt = encoder.encode(user.getPassword());
-            user.setPassword(bcrypt);
-            userService.save(user);
-            return Result.success();
-        }
+        org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder encoder =
+                new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
+        String bcrypt = encoder.encode(user.getPassword());
+        user.setPassword(bcrypt);
+        userService.save(user);
+        return Result.success();
 
 
 
@@ -148,11 +166,12 @@ public class UserController {
             return Result.error("验证码错误");
         }
         redisTemplate.delete(captchaKey);
-        User u;
+        User u = null;
         if (accountName != null && !accountName.isBlank()) {
-            u = userService.query().eq("account_name", accountName).one();
-        } else {
-            u = userService.query().eq("username", username).one();
+            u = userService.query().eq("account_name", accountName.trim()).one();
+        }
+        if (u == null && username != null && !username.isBlank()) {
+            u = userService.query().eq("username", username.trim()).one();
         }
         if (u == null) {
             return Result.error("账户不存在");
@@ -241,9 +260,32 @@ public class UserController {
     }
     @PostMapping("/auth/resetPassword")
     @Log("UPDATE_PASSWORD")
-    public Result resetPassword(@RequestParam @NotBlank String oldPassword,
-                                @RequestParam @NotBlank String newPassword) {
+    public Result resetPassword(@RequestParam(required = false) String oldPassword,
+                                @RequestParam(required = false) String newPassword,
+                                @RequestBody(required = false) Map<String, String> body) {
         try {
+            String oldPwd = oldPassword;
+            String newPwd = newPassword;
+            if (body != null) {
+                if ((oldPwd == null || oldPwd.isBlank())) {
+                    oldPwd = body.get("oldPassword");
+                }
+                if ((newPwd == null || newPwd.isBlank())) {
+                    newPwd = body.get("newPassword");
+                }
+            }
+
+            if (oldPwd == null || oldPwd.isBlank()) {
+                return Result.error("原密码不能为空");
+            }
+            if (newPwd == null || newPwd.isBlank()) {
+                return Result.error("新密码不能为空");
+            }
+            String nextPassword = newPwd.trim();
+            if (!PASSWORD_PATTERN.matcher(nextPassword).matches()) {
+                return Result.error("新密码需8-20位，且包含字母和数字");
+            }
+
             Map<String,Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
             User user = userService.getById(userId);
@@ -254,17 +296,17 @@ public class UserController {
                     new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder();
             boolean verified = false;
             try {
-                verified = encoder.matches(oldPassword, user.getPassword());
+                verified = encoder.matches(oldPwd, user.getPassword());
             } catch (Exception ignored) {}
             if (!verified) {
-                if (Md5Util.checkPassword(oldPassword, user.getPassword())) {
+                if (Md5Util.checkPassword(oldPwd, user.getPassword())) {
                     verified = true;
                 }
             }
             if (!verified) {
                 return Result.error("原密码错误");
             }
-            String bcryptPassword = encoder.encode(newPassword);
+            String bcryptPassword = encoder.encode(nextPassword);
             user.setPassword(bcryptPassword);
             user.setUpdateTime(LocalDateTime.now());
             userService.updateById(user);
@@ -293,6 +335,9 @@ public class UserController {
 
             // 获取当前用户信息
             User currentUser = userService.getById(userId);
+            if (currentUser == null) {
+                return Result.error("用户不存在");
+            }
 
             // 更新字段 - 确保处理前端传递的所有可能字段
             // 真实姓名不可更改
@@ -309,16 +354,17 @@ public class UserController {
             // if (userUpdate.getCollege() != null) {
             //    currentUser.setCollege(userUpdate.getCollege());
             // }
-            if (userUpdate.getAccountName() != null) {
-                currentUser.setAccountName(userUpdate.getAccountName());
-            }
             if (userUpdate.getUsername() != null) {
+                String targetUsername = userUpdate.getUsername().trim();
+                if (targetUsername.isEmpty()) {
+                    return Result.error("用户名不能为空");
+                }
                 // 检查用户名是否已被占用
-                User existingUser = userService.query().eq("username", userUpdate.getUsername()).ne("id", userId).one();
+                User existingUser = userService.query().eq("username", targetUsername).ne("id", userId).one();
                 if (existingUser != null) {
                     return Result.error("用户名已被占用");
                 }
-                currentUser.setUsername(userUpdate.getUsername());
+                currentUser.setUsername(targetUsername);
             }
 
             currentUser.setUpdateTime(LocalDateTime.now());
@@ -332,6 +378,13 @@ public class UserController {
             e.printStackTrace();
             return Result.error("更新用户信息失败");
         }
+    }
+
+    private boolean existsByColumn(String column, String value) {
+        if (value == null || value.isBlank()) {
+            return false;
+        }
+        return userService.query().eq(column, value).count() > 0;
     }
 
 }
