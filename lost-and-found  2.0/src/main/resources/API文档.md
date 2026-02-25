@@ -806,3 +806,64 @@
 ### 12.4 数据迁移脚本
 * 新增脚本：`update_schema_v3_logic_delete.sql`
 * 作用：补齐上述5张表 `is_deleted` 字段、清洗 NULL、统一默认值为 `0`。
+
+### 12.5 AI 描述补全接口（一期）
+
+#### 接口说明
+* **接口地址**：`/api/ai/description/suggest`
+* **请求方法**：POST
+* **认证要求**：需要登录（`Authorization` 头）
+* **接口用途**：为失物/招领发布内容生成“客观简洁”的中文描述建议，不改动原发布流程。
+
+#### 请求参数（JSON）
+| 参数名 | 类型 | 必填 | 描述 |
+|--------|------|------|------|
+| itemKind | string | 是 | 发布类型，`lost` 或 `find` |
+| name | string | 是 | 物品名称 |
+| type | string | 是 | 物品类型（如 `ELECTRONICS`） |
+| location | string | 是 | 地点 |
+| timeValue | string | 否 | 时间描述 |
+| imageUrls | string[] | 否 | 图片 URL 列表，最多处理 3 张 |
+| currentDescription | string | 否 | 当前描述（仅供参考） |
+| style | string | 否 | 固定 `objective_concise` |
+
+#### 请求示例
+```json
+{
+  "itemKind": "lost",
+  "name": "iphone 8",
+  "type": "ELECTRONICS",
+  "location": "图书馆三楼自习区",
+  "timeValue": "2026-02-25 11:25",
+  "imageUrls": [
+    "https://example.com/lost-item.jpg"
+  ],
+  "currentDescription": "",
+  "style": "objective_concise"
+}
+```
+
+#### 响应示例
+```json
+{
+  "code": 0,
+  "message": "操作成功",
+  "data": {
+    "suggestedDescription": "在图书馆三楼自习区遗失了一部iPhone 8，机身为深色，外观有轻微使用痕迹...",
+    "sourceMode": "vision",
+    "notice": null,
+    "truncated": false
+  }
+}
+```
+
+#### 字段说明
+* `sourceMode`：`text` / `vision` / `mixed`
+* `notice`：视觉失败降级文本时返回“图片增强失败，已切换文本补全”
+* `truncated`：当建议文本超过 500 字被截断时为 `true`
+
+#### 失败场景（中文提示）
+* AI 未开启：`AI功能未开启`
+* AI 未配置：`AI服务未配置，请联系管理员`
+* 调用超时：`AI服务超时，请稍后重试`
+* 调用频率过高：`请求过于频繁，请稍后再试`

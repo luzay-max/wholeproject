@@ -9,6 +9,7 @@ import com.lzy.lostandfound.vo.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -52,6 +53,7 @@ public class SysDictDataController {
 
     @Operation(summary = "新增字典数据")
     @Log("ADD_DICT_DATA")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @PostMapping
     public Result add(@RequestBody SysDictData dict) {
         return Result.success(dictDataService.save(dict));
@@ -59,6 +61,7 @@ public class SysDictDataController {
 
     @Operation(summary = "修改字典数据")
     @Log("UPDATE_DICT_DATA")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @PutMapping
     public Result edit(@RequestBody SysDictData dict) {
         return Result.success(dictDataService.updateById(dict));
@@ -66,6 +69,7 @@ public class SysDictDataController {
 
     @Operation(summary = "删除字典数据")
     @Log("DELETE_DICT_DATA")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @DeleteMapping("/{dictCodes}")
     public Result remove(@PathVariable List<Long> dictCodes) {
         return Result.success(dictDataService.removeByIds(dictCodes));

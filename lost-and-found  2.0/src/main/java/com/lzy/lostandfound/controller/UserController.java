@@ -219,7 +219,7 @@ public class UserController {
         ValueOperations<String, String> operations = redisTemplate.opsForValue();
         String userId = operations.get("refresh:" + refreshToken);
         if (userId == null) {
-            return Result.error("Refresh Token 无效或已过期");
+            return Result.error("刷新令牌无效或已过期");
         }
         User u = userService.getById(userId);
         if (u == null) {
@@ -248,7 +248,7 @@ public class UserController {
 
 
         if (token == null) {
-            return Result.error("redis异常");
+            return Result.error("会话状态异常");
         }
             String andDelete = redisTemplate.opsForValue().getAndDelete(token);
         if (andDelete == null) {

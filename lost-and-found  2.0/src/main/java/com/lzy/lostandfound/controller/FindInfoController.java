@@ -68,11 +68,11 @@ public class FindInfoController {
                     long ts = Long.parseLong(request.getFoundTime());
                     LocalDateTime ft = LocalDateTime.ofInstant(Instant.ofEpochMilli(ts), ZoneId.of("Asia/Shanghai"));
                     if (ft.isAfter(LocalDateTime.now(ZoneId.of("Asia/Shanghai")))) {
-                        return Result.error("foundTime cannot be in the future");
+                        return Result.error("拾取时间不能晚于当前时间");
                     }
                     findInfo.setFoundTime(ft);
                 } catch (NumberFormatException ex) {
-                    return Result.error("invalid foundTime format");
+                    return Result.error("拾取时间格式不正确");
                 }
             }
             findInfo.setPublishTime(LocalDateTime.now());
@@ -80,10 +80,10 @@ public class FindInfoController {
 
             findInfoService.save(findInfo);
 
-            return Result.success("publish success, waiting for review");
+            return Result.success("发布成功，等待审核");
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.error("publish failed, try again later");
+            return Result.error("发布失败，请稍后重试");
         }
     }
 
@@ -213,7 +213,7 @@ public class FindInfoController {
 
             FindInfo oldFindInfo = findInfoService.getById(request.getId());
             if (oldFindInfo == null) {
-                return Result.error("info not found");
+                return Result.error("信息不存在");
             }
 
             if (!oldFindInfo.getUserId().equals(userId)) {
@@ -239,20 +239,20 @@ public class FindInfoController {
                     long ts = Long.parseLong(request.getFoundTime());
                     LocalDateTime ft = LocalDateTime.ofInstant(Instant.ofEpochMilli(ts), ZoneId.of("Asia/Shanghai"));
                     if (ft.isAfter(LocalDateTime.now(ZoneId.of("Asia/Shanghai")))) {
-                        return Result.error("foundTime cannot be in the future");
+                        return Result.error("拾取时间不能晚于当前时间");
                     }
                     findInfo.setFoundTime(ft);
                 } catch (NumberFormatException ex) {
-                    return Result.error("invalid foundTime format");
+                    return Result.error("拾取时间格式不正确");
                 }
             }
             findInfo.setUpdateTime(LocalDateTime.now());
 
             findInfoService.updateById(findInfo);
-            return Result.success("publish success, waiting for review");
+            return Result.success("更新成功，等待审核");
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.error("update failed");
+            return Result.error("更新失败");
         }
     }
 

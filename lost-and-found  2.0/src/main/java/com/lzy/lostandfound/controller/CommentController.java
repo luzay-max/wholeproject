@@ -62,7 +62,7 @@ public class CommentController {
         comment.setAvatar(userService.getById(userId).getAvatar());
 
         boolean saved = commentService.save(comment);
-        return saved ? Result.success("comment created") : Result.error("comment failed");
+        return saved ? Result.success("评论成功") : Result.error("评论失败");
     }
 
     /**

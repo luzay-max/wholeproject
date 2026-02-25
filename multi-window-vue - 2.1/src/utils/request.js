@@ -15,6 +15,8 @@ const shouldNotifyAuth = () => {
   return true;
 };
 
+const needGlobalErrorToast = (config) => config?.showErrorMessage === true;
+
 // 创建axios实例
 const service = axios.create({
   baseURL: import.meta.env.VITE_APP_BASE_API || '/api',
@@ -117,7 +119,9 @@ service.interceptors.response.use(
           window.location.href = '/login';
         }
       } else {
-        ElMessage.error(res.message || '系统错误');
+        if (needGlobalErrorToast(response.config)) {
+          ElMessage.error(res.message || '系统错误');
+        }
       }
       return Promise.reject(new Error(res.message || '系统错误'));
     }
@@ -155,7 +159,7 @@ service.interceptors.response.use(
       }
     }
     
-    if (!(error && error.response && error.response.status === 401 && !shouldNotifyAuth())) {
+    if (!(error && error.response && error.response.status === 401 && !shouldNotifyAuth()) && needGlobalErrorToast(error?.config)) {
        ElMessage.error(message);
     }
     return Promise.reject(error);

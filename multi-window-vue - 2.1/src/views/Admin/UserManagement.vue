@@ -212,7 +212,14 @@
 
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="userForm.status">
-            <el-radio v-for="dict in userStatusOptions" :key="dict.value" :label="Number(dict.value)">{{ dict.label }}</el-radio>
+            <el-radio
+              v-for="dict in userStatusOptions"
+              :key="getDictValue(dict)"
+              :label="normalizeStatusValue(getDictValue(dict))"
+              :disabled="isAdminEditStatusLocked(dict)"
+            >
+              {{ getDictLabel(dict) }}
+            </el-radio>
           </el-radio-group>
         </el-form-item>
       </el-form>
@@ -245,7 +252,7 @@
 </template>
 
 <script>
-import { ref, reactive, onMounted, computed, onBeforeUnmount } from 'vue';
+import { ref, reactive, onMounted, computed, onBeforeUnmount, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Search } from '@element-plus/icons-vue';
 import DictSelect from '../../components/Dict/DictSelect.vue';
@@ -420,6 +427,18 @@ export default {
       }
     };
 
+    const getDictLabel = (item) => item?.label ?? item?.dictLabel ?? '';
+    const getDictValue = (item) => item?.value ?? item?.dictValue ?? '';
+    const normalizeStatusValue = (value) => {
+      const str = String(value ?? '').trim();
+      if (str === '0' || str === '1') return Number(str);
+      return value;
+    };
+    const isAdminEditStatusLocked = (dictItem) => {
+      const statusValue = normalizeStatusValue(getDictValue(dictItem));
+      return userForm.role === 'ADMIN' && statusValue === 1;
+    };
+
     // 加载用户列表
     const loadUserList = async () => {
       try {
@@ -518,9 +537,18 @@ export default {
       userForm.college = user.college || '';
       userForm.phone = user.phone;
       userForm.email = user.email;
-      userForm.status = user.status;
+      userForm.status = normalizeStatusValue(user.status);
       userDialogVisible.value = true;
     };
+
+    watch(
+      () => userForm.role,
+      (role) => {
+        if (role === 'ADMIN') {
+          userForm.status = 0;
+        }
+      }
+    );
 
     // 确认保存用户 (新增/编辑)
     const handleConfirmUser = async () => {
@@ -699,6 +727,10 @@ export default {
       formatDate,
       formatShortId,
       handleCopyId,
+      getDictLabel,
+      getDictValue,
+      normalizeStatusValue,
+      isAdminEditStatusLocked,
       loadUserList,
       handleSearch,
       handleReset,

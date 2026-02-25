@@ -10,6 +10,8 @@ const shouldNotifyAuth = () => {
   return true;
 };
 
+const needGlobalErrorToast = (config) => config?.showErrorMessage === true;
+
 
 // 创建 axios 实例
 const service = axios.create({
@@ -68,8 +70,6 @@ service.interceptors.response.use(
         const userStore = useUserStore();
         userStore.logout();
         router.push('/login');
-      } else {
-        ElMessage.error(res.message || '请求失败');
       }
       return Promise.reject(new Error(res.message || '请求失败'));
     }
@@ -114,8 +114,9 @@ service.interceptors.response.use(
       errorMsg = '网络连接失败，请检查网络';
     }
     
-    if (!(error && error.response && error.response.status === 401 && !shouldNotifyAuth())) {
-    ElMessage.error(errorMsg);
+    const is401NoNotify = error && error.response && error.response.status === 401 && !shouldNotifyAuth();
+    if (!is401NoNotify && needGlobalErrorToast(error?.config)) {
+      ElMessage.error(errorMsg);
     }
     // 优化错误对象，优先使用服务器返回的错误信息
     if (error && error.response && error.response.data && error.response.data.message) {

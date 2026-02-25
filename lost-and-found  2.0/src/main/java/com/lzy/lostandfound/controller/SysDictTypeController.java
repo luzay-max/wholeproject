@@ -9,6 +9,7 @@ import com.lzy.lostandfound.vo.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -46,6 +47,7 @@ public class SysDictTypeController {
 
     @Operation(summary = "新增字典类型")
     @Log("ADD_DICT_TYPE")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @PostMapping
     public Result add(@RequestBody SysDictType dict) {
         if (dictTypeService.count(new LambdaQueryWrapper<SysDictType>().eq(SysDictType::getDictType, dict.getDictType())) > 0) {
@@ -56,6 +58,7 @@ public class SysDictTypeController {
 
     @Operation(summary = "修改字典类型")
     @Log("UPDATE_DICT_TYPE")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @PutMapping
     public Result edit(@RequestBody SysDictType dict) {
         if (dictTypeService.count(new LambdaQueryWrapper<SysDictType>()
@@ -68,6 +71,7 @@ public class SysDictTypeController {
 
     @Operation(summary = "删除字典类型")
     @Log("DELETE_DICT_TYPE")
+    @CacheEvict(cacheNames = "DictDataCache", allEntries = true)
     @DeleteMapping("/{dictIds}")
     public Result remove(@PathVariable List<Long> dictIds) {
         return Result.success(dictTypeService.removeByIds(dictIds));

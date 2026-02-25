@@ -66,11 +66,11 @@ public class LostInfoController {
                 long ts = Long.parseLong(request.getLostTime());
                 LocalDateTime lt = LocalDateTime.ofInstant(Instant.ofEpochMilli(ts), ZoneId.of("Asia/Shanghai"));
                 if (lt.isAfter(LocalDateTime.now(ZoneId.of("Asia/Shanghai")))) {
-                    return Result.error("lostTime cannot be in the future");
+                    return Result.error("丢失时间不能晚于当前时间");
                 }
                 lostInfo.setLostTime(lt);
             } catch (NumberFormatException ex) {
-                return Result.error("invalid lostTime format");
+                return Result.error("丢失时间格式不正确");
             }
             lostInfo.setPublishTime(LocalDateTime.now());
             lostInfo.setUpdateTime(LocalDateTime.now());
@@ -192,7 +192,7 @@ public class LostInfoController {
 
             LostInfo oldLostInfo = lostInfoService.getById(request.getId());
             if (oldLostInfo == null) {
-                return Result.error("info not found");
+                return Result.error("信息不存在");
             }
 
             if (!oldLostInfo.getUserId().equals(userId)) {
@@ -217,19 +217,19 @@ public class LostInfoController {
                 long ts = Long.parseLong(request.getLostTime());
                 LocalDateTime lt = LocalDateTime.ofInstant(Instant.ofEpochMilli(ts), ZoneId.of("Asia/Shanghai"));
                 if (lt.isAfter(LocalDateTime.now(ZoneId.of("Asia/Shanghai")))) {
-                    return Result.error("lostTime cannot be in the future");
+                    return Result.error("丢失时间不能晚于当前时间");
                 }
                 lostInfo.setLostTime(lt);
             } catch (NumberFormatException ex) {
-                return Result.error("invalid lostTime format");
+                return Result.error("丢失时间格式不正确");
             }
             lostInfo.setUpdateTime(LocalDateTime.now());
 
             lostInfoService.updateById(lostInfo);
-            return Result.success("update success, waiting for review");
+            return Result.success("更新成功，等待审核");
         } catch (Exception e) {
             e.printStackTrace();
-            return Result.error("update failed");
+            return Result.error("更新失败");
         }
     }
 

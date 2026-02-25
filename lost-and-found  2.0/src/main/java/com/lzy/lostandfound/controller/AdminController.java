@@ -64,6 +64,19 @@ public class AdminController {
     @Autowired
     private HonorPeriodItemMapper honorPeriodItemMapper;
 
+    private String currentLoginUserId() {
+        Map<String, Object> claims = ThreadLocalUtil.get();
+        if (claims == null) {
+            return null;
+        }
+        Object id = claims.get("id");
+        return id == null ? null : String.valueOf(id);
+    }
+
+    private boolean isAdminRole(String role) {
+        return role != null && "ADMIN".equalsIgnoreCase(role);
+    }
+
     @GetMapping("/admin/honor/periods")
     public Result honorPeriods(@RequestParam(defaultValue = "1") Integer page,
                                @RequestParam(defaultValue = "8") Integer pageSize,
@@ -161,7 +174,7 @@ public class AdminController {
         try {
             String periodId = body.get("periodId");
             if (periodId == null || periodId.isEmpty()) {
-                return Result.error("periodId不能为空");
+                return Result.error("周期ID不能为空");
             }
             HonorPeriod period = honorPeriodService.getById(periodId);
             if (period == null) {
@@ -185,7 +198,7 @@ public class AdminController {
         try {
             String periodId = body.get("periodId");
             if (periodId == null || periodId.isEmpty()) {
-                return Result.error("periodId不能为空");
+                return Result.error("周期ID不能为空");
             }
             HonorPeriod period = honorPeriodService.getById(periodId);
             if (period == null) {
@@ -334,7 +347,7 @@ public class AdminController {
     public Result addHonorPeriodItem(@RequestBody HonorPeriodItem item) {
         try {
             if (item.getPeriodId() == null || item.getPeriodId().isEmpty()) {
-                return Result.error("periodId不能为空");
+                return Result.error("周期ID不能为空");
             }
             
             // 如果没有ID，生成一个
@@ -425,7 +438,7 @@ public class AdminController {
     public Result deleteHonorPeriod(@PathVariable String periodId) {
         try {
             if (periodId == null || periodId.isEmpty()) {
-                return Result.error("periodId不能为空");
+                return Result.error("周期ID不能为空");
             }
             
             // 检查周期是否存在
@@ -457,7 +470,7 @@ public class AdminController {
     public Result recoverHonorPeriod(@PathVariable String periodId) {
         try {
             if (periodId == null || periodId.isEmpty()) {
-                return Result.error("periodId不能为空");
+                return Result.error("周期ID不能为空");
             }
 
             int restoredPeriod = honorPeriodMapper.restoreById(periodId);
@@ -876,6 +889,7 @@ public class AdminController {
             if (userId == null || role == null) {
                 return Result.error("参数不能为空");
             }
+            role = role.trim().toUpperCase();
             
             // 验证角色是否合法
             if (!Arrays.asList("STUDENT", "TEACHER", "ADMIN").contains(role)) {
@@ -886,6 +900,13 @@ public class AdminController {
             User user = userService.getById(userId);
             if (user == null) {
                 return Result.error("用户不存在");
+            }
+            if (isAdminRole(user.getRole()) && !isAdminRole(role)) {
+                return Result.error("管理员角色不可降级");
+            }
+            String operatorId = currentLoginUserId();
+            if (operatorId != null && operatorId.equals(user.getId()) && !isAdminRole(role)) {
+                return Result.error("禁止取消当前登录账号的管理员权限");
             }
             
             user.setRole(role);
@@ -1051,6 +1072,30 @@ public class AdminController {
                 return Result.error("用户不存在");
             }
 
+            String newRole = user.getRole() == null ? existing.getRole() : user.getRole().trim().toUpperCase();
+            if (!Arrays.asList("STUDENT", "TEACHER", "ADMIN").contains(newRole)) {
+                return Result.error("角色类型不合法");
+            }
+
+            Integer newStatus = user.getStatus() == null ? existing.getStatus() : user.getStatus();
+            if (newStatus == null) {
+                newStatus = 0;
+            }
+            if (newStatus != 0 && newStatus != 1) {
+                return Result.error("状态类型不合法 (应为 0:正常 或 1:封禁)");
+            }
+
+            String operatorId = currentLoginUserId();
+            if (newStatus == 1 && operatorId != null && operatorId.equals(existing.getId())) {
+                return Result.error("禁止封禁当前登录账号");
+            }
+            if (isAdminRole(existing.getRole()) && !isAdminRole(newRole)) {
+                return Result.error("管理员角色不可降级");
+            }
+            if (isAdminRole(newRole) && newStatus == 1) {
+                return Result.error("管理员不可被封禁");
+            }
+
             // 校验真实姓名格式
             if (user.getName() != null && !user.getName().matches("^[\\u4e00-\\u9fa5\\u3400-\\u4db5a-zA-Z\\s.·]{2,20}$")) {
                 return Result.error("真实姓名格式不正确（2-20位，支持中英文、生僻字、点、空格）");
@@ -1061,10 +1106,10 @@ public class AdminController {
             existing.setName(user.getName());
             existing.setPhone(user.getPhone());
             existing.setEmail(user.getEmail());
-            existing.setRole(user.getRole());
+            existing.setRole(newRole);
             existing.setCollege(user.getCollege());
             existing.setStudentId(user.getStudentId());
-            existing.setStatus(user.getStatus());
+            existing.setStatus(newStatus);
             
             // 如果提供了新密码，则加密更新
             if (user.getPassword() != null && !user.getPassword().isEmpty()) {
@@ -1936,6 +1981,7 @@ public class AdminController {
             if (role == null) {
                 return Result.error("角色参数不能为空");
             }
+            role = role.trim().toUpperCase();
             
             // 验证角色是否合法
             if (!Arrays.asList("STUDENT", "TEACHER", "ADMIN").contains(role)) {
@@ -1946,6 +1992,13 @@ public class AdminController {
             User user = userService.getById(id);
             if (user == null) {
                 return Result.error("用户不存在");
+            }
+            if (isAdminRole(user.getRole()) && !isAdminRole(role)) {
+                return Result.error("管理员角色不可降级");
+            }
+            String operatorId = currentLoginUserId();
+            if (operatorId != null && operatorId.equals(user.getId()) && !isAdminRole(role)) {
+                return Result.error("禁止取消当前登录账号的管理员权限");
             }
             
             user.setRole(role);
@@ -1996,9 +2049,14 @@ public class AdminController {
             if (user == null) {
                 return Result.error("用户不存在");
             }
+
+            String operatorId = currentLoginUserId();
+            if (statusInt == 1 && operatorId != null && operatorId.equals(user.getId())) {
+                return Result.error("禁止封禁当前登录账号");
+            }
             
             // 管理员不可被封禁
-            if (statusInt == 1 && "ADMIN".equalsIgnoreCase(user.getRole())) {
+            if (statusInt == 1 && isAdminRole(user.getRole())) {
                 return Result.error("管理员不可被封禁");
             }
             
@@ -2566,3 +2624,4 @@ public class AdminController {
 
 
 }
+

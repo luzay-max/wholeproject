@@ -144,6 +144,19 @@
               resize="none"
               class="custom-textarea"
             ></el-input>
+            <div class="ai-actions">
+              <el-button
+                type="default"
+                size="small"
+                :loading="aiLoading"
+                @click="handleAiSuggest"
+                class="ai-btn"
+              >
+                <el-icon><Lightning /></el-icon>
+                AI补全描述
+              </el-button>
+              <span class="ai-hint">基于名称、类型、地点和图片生成客观描述</span>
+            </div>
           </el-form-item>
 
           <!-- 联系信息标题 -->
@@ -288,7 +301,7 @@
 
 <script>
 import { ref, reactive } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   DocumentAdd, 
   InfoFilled, 
@@ -309,6 +322,7 @@ import {
   Refresh 
 } from '@element-plus/icons-vue';
 import { publishFind } from '../../api/findApi';
+import { suggestDescription } from '../../api/aiApi';
 import { getToken } from '../../utils/authUtil';
 import DictSelect from '../Dict/DictSelect.vue';
 
@@ -338,6 +352,7 @@ export default {
   setup(props, { emit }) {
     const findFormRef = ref(null);
     const loading = ref(false);
+    const aiLoading = ref(false);
     const previewVisible = ref(false);
     const previewImage = ref('');
     const fileList = ref([]);
@@ -448,6 +463,89 @@ export default {
       }
       return payload;
     };
+
+    const formatTimeValue = (value) => {
+      if (!value) return '';
+      const num = Number(value);
+      if (!Number.isNaN(num) && num > 0) {
+        const dt = new Date(num);
+        if (!Number.isNaN(dt.getTime())) {
+          return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')} ${String(dt.getHours()).padStart(2, '0')}:${String(dt.getMinutes()).padStart(2, '0')}`;
+        }
+      }
+      return String(value);
+    };
+
+    const normalizeImages = () => {
+      if (!Array.isArray(findForm.images)) return [];
+      return findForm.images.filter((url) => typeof url === 'string' && /^https?:\/\//i.test(url));
+    };
+
+    const applyAiDescription = async (suggested) => {
+      const clean = (suggested || '').trim();
+      if (!clean) {
+        ElMessage.warning('AI未生成有效描述，请重试');
+        return;
+      }
+      const current = (findForm.description || '').trim();
+      if (!current) {
+        findForm.description = clean;
+        return;
+      }
+
+      try {
+        await ElMessageBox.confirm(
+          '当前已填写描述，请选择如何应用AI建议',
+          'AI描述建议',
+          {
+            type: 'info',
+            confirmButtonText: '替换当前描述',
+            cancelButtonText: '追加到现有描述',
+            distinguishCancelAndClose: true,
+            closeOnClickModal: false
+          }
+        );
+        findForm.description = clean;
+      } catch (action) {
+        if (action === 'cancel') {
+          findForm.description = `${current}\n${clean}`;
+        }
+      }
+    };
+
+    const handleAiSuggest = async () => {
+      if (aiLoading.value) return;
+      if (!findForm.name || !findForm.type || !findForm.location) {
+        ElMessage.warning('请先填写物品名称、物品类型和地点');
+        return;
+      }
+
+      aiLoading.value = true;
+      try {
+        const payload = {
+          itemKind: 'find',
+          name: findForm.name,
+          type: findForm.type,
+          location: findForm.location,
+          timeValue: formatTimeValue(findForm.foundTime),
+          imageUrls: normalizeImages(),
+          currentDescription: findForm.description || '',
+          style: 'objective_concise'
+        };
+        const res = await suggestDescription(payload);
+        await applyAiDescription(res.data?.suggestedDescription || '');
+        if (res.data?.notice) {
+          ElMessage.warning(res.data.notice);
+        } else {
+          ElMessage.success('AI描述已生成');
+        }
+      } catch (error) {
+        ElMessage.error(error?.message || 'AI补全失败，请稍后再试');
+      } finally {
+        aiLoading.value = false;
+      }
+    };
+
     // Submit form
     const handleSubmit = async () => {
       if (!findFormRef.value) return;
@@ -485,6 +583,7 @@ export default {
     return {
       findFormRef,
       loading,
+      aiLoading,
       findForm,
       rules,
       previewVisible,
@@ -497,6 +596,7 @@ export default {
       handleUploadError,
       handlePictureCardPreview,
       handleRemove,
+      handleAiSuggest,
       handleSubmit,
       handleReset
     };
@@ -633,6 +733,23 @@ export default {
 
 .custom-textarea :deep(.el-textarea__inner) {
   border-radius: 10px;
+}
+
+.ai-actions {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ai-btn {
+  border-radius: 8px;
+}
+
+.ai-hint {
+  font-size: 12px;
+  color: var(--color-text-tertiary);
 }
 
 .section-title {
