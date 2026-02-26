@@ -148,7 +148,7 @@
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   MoreFilled, 
@@ -192,6 +192,7 @@ export default {
     const likedComments = ref(new Set());
     const defaultAvatar = '/src/assets/images/1.png';
     const clickGuard = createClickGuard(800);
+    let loadSeq = 0;
 
     const formatDate = (ts) => {
       if (!ts) return '';
@@ -207,10 +208,12 @@ export default {
     const isLiked = (commentId) => likedComments.value.has(commentId);
 
     const loadComments = async (isLoadMore=false) => {
+      const currentSeq = ++loadSeq;
       try {
         if(!isLoadMore) page.value=1;
         const params = { infoId: props.infoId, infoType: props.infoType, page: page.value, pageSize: pageSize.value };
         const res = await getComments(params);
+        if (currentSeq !== loadSeq) return;
         const data = res.data?.data?.list || res.data?.list || [];
         totalComments.value = res.data?.data?.total ?? res.data?.total ?? 0;
         data.forEach(c=>{ 
@@ -223,10 +226,22 @@ export default {
         else comments.value = data;
         hasMore.value = data.length === pageSize.value;
       } catch (err) {
+        if (currentSeq !== loadSeq) return;
         if (err && err.response && err.response.status === 401) return;
         console.error(err);
         ElMessage.error('加载评论失败');
       }
+    };
+
+    const resetCommentState = () => {
+      comments.value = [];
+      totalComments.value = 0;
+      commentContent.value = '';
+      submittingComment.value = false;
+      loadingMore.value = false;
+      page.value = 1;
+      hasMore.value = true;
+      likedComments.value = new Set();
     };
 
     const loadMoreComments = async () => {
@@ -312,8 +327,20 @@ export default {
           console.error('Failed to load user info:', error);
         }
       }
-      loadComments();
     });
+
+    watch(
+      () => [props.infoId, props.infoType],
+      async ([nextId, nextType]) => {
+        if (!nextId || !nextType) {
+          resetCommentState();
+          return;
+        }
+        resetCommentState();
+        await loadComments(false);
+      },
+      { immediate: true }
+    );
     
     return { 
       comments, 

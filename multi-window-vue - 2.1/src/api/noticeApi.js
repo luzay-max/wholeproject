@@ -29,3 +29,9 @@ export const markAllNoticeRead = () => {
   });
 };
 
+export const banReporterByNotice = (noticeId) => {
+  return request({
+    url: `/notice/report/${noticeId}/ban-reporter`,
+    method: 'put'
+  });
+};

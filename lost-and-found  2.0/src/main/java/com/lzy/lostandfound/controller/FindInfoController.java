@@ -6,8 +6,11 @@ import com.lzy.lostandfound.dto.FindInfoCreateRequest;
 import com.lzy.lostandfound.dto.FindInfoUpdateRequest;
 import com.lzy.lostandfound.entity.Activities;
 import com.lzy.lostandfound.entity.FindInfo;
+import com.lzy.lostandfound.entity.User;
 import com.lzy.lostandfound.service.IActivitiesService;
 import com.lzy.lostandfound.service.IFindInfoService;
+import com.lzy.lostandfound.service.IUserService;
+import com.lzy.lostandfound.service.RiskControlService;
 import com.lzy.lostandfound.utils.PublishTextQualityValidator;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
@@ -40,6 +43,10 @@ public class FindInfoController {
     private IFindInfoService findInfoService;
     @Autowired
     private IActivitiesService activitiesService;
+    @Autowired
+    private RiskControlService riskControlService;
+    @Autowired
+    private IUserService userService;
 
     /**
      * 发布招领信息
@@ -51,6 +58,11 @@ public class FindInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String rateError = riskControlService.checkPublishRate(userId);
+            if (rateError != null) {
+                return Result.error(rateError);
+            }
+
             String nameError = PublishTextQualityValidator.validateItemName(request.getName());
             if (nameError != null) {
                 return Result.error(nameError);
@@ -58,6 +70,18 @@ public class FindInfoController {
             String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
             if (locationError != null) {
                 return Result.error(locationError);
+            }
+            String sensitiveNameError = riskControlService.checkSensitiveContent(request.getName(), "物品名称");
+            if (sensitiveNameError != null) {
+                return Result.error(sensitiveNameError);
+            }
+            String sensitiveLocationError = riskControlService.checkSensitiveContent(request.getLocation(), "拾取地点");
+            if (sensitiveLocationError != null) {
+                return Result.error(sensitiveLocationError);
+            }
+            String sensitiveDescError = riskControlService.checkSensitiveContent(request.getDescription(), "物品描述");
+            if (sensitiveDescError != null) {
+                return Result.error(sensitiveDescError);
             }
 
             FindInfo findInfo = new FindInfo();
@@ -185,7 +209,32 @@ public class FindInfoController {
             findInfo.setUpdateTime(LocalDateTime.now());
             findInfoService.updateById(findInfo);
 
-            return Result.success(findInfo);
+            Map<String, Object> detail = new java.util.HashMap<>();
+            detail.put("id", findInfo.getId());
+            detail.put("userId", findInfo.getUserId());
+            detail.put("name", findInfo.getName());
+            detail.put("type", findInfo.getType());
+            detail.put("location", findInfo.getLocation());
+            detail.put("description", findInfo.getDescription());
+            detail.put("images", findInfo.getImages());
+            detail.put("contactInfo", findInfo.getContactInfo());
+            detail.put("contactPhone", findInfo.getContactPhone());
+            detail.put("contactEmail", findInfo.getContactEmail());
+            detail.put("findTime", findInfo.getFoundTime());
+            detail.put("status", findInfo.getStatus());
+            detail.put("viewCount", findInfo.getViewCount());
+            detail.put("publishTime", findInfo.getPublishTime());
+            detail.put("updateTime", findInfo.getUpdateTime());
+
+            User publisher = userService.getById(findInfo.getUserId());
+            if (publisher != null) {
+                detail.put("publisherId", publisher.getId());
+                detail.put("publisherAccountName", publisher.getAccountName());
+                detail.put("publisherAvatar", publisher.getAvatar());
+                detail.put("publisherCollege", publisher.getCollege());
+            }
+
+            return Result.success(detail);
         } catch (Exception e) {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取详情失败");
@@ -228,6 +277,18 @@ public class FindInfoController {
             String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
             if (locationError != null) {
                 return Result.error(locationError);
+            }
+            String sensitiveNameError = riskControlService.checkSensitiveContent(request.getName(), "物品名称");
+            if (sensitiveNameError != null) {
+                return Result.error(sensitiveNameError);
+            }
+            String sensitiveLocationError = riskControlService.checkSensitiveContent(request.getLocation(), "拾取地点");
+            if (sensitiveLocationError != null) {
+                return Result.error(sensitiveLocationError);
+            }
+            String sensitiveDescError = riskControlService.checkSensitiveContent(request.getDescription(), "物品描述");
+            if (sensitiveDescError != null) {
+                return Result.error(sensitiveDescError);
             }
 
             FindInfo oldFindInfo = findInfoService.getById(request.getId());

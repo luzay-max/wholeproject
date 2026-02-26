@@ -13,6 +13,7 @@ import com.lzy.lostandfound.service.ICommentService;
 import com.lzy.lostandfound.service.IFindInfoService;
 import com.lzy.lostandfound.service.ILostInfoService;
 import com.lzy.lostandfound.service.NoticeHelperService;
+import com.lzy.lostandfound.service.RiskControlService;
 import com.lzy.lostandfound.service.IUserService;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
@@ -51,6 +52,8 @@ public class CommentController {
     private IFindInfoService findInfoService;
     @Autowired
     private NoticeHelperService noticeHelperService;
+    @Autowired
+    private RiskControlService riskControlService;
 
     /**
      * 添加评论
@@ -60,6 +63,14 @@ public class CommentController {
     public Result addComment(@Valid @RequestBody CommentCreateRequest request) {
         Map<String, Object> userMap = ThreadLocalUtil.get();
         String userId = (String) userMap.get("id");
+        String rateError = riskControlService.checkCommentRate(userId);
+        if (rateError != null) {
+            return Result.error(rateError);
+        }
+        String sensitiveError = riskControlService.checkSensitiveContent(request.getContent(), "评论内容");
+        if (sensitiveError != null) {
+            return Result.error(sensitiveError);
+        }
 
         Comment comment = new Comment();
         comment.setInfoId(request.getInfoId());

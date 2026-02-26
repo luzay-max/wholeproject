@@ -17,6 +17,12 @@
             <el-tag :type="bizTagType(row.bizType)">{{ row.bizType }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="举报人ID" width="220">
+          <template #default="{ row }">
+            <span v-if="isReportNotice(row)">{{ reportMeta(row).reporterId || '-' }}</span>
+            <span v-else>-</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="createTime" label="时间" width="180" />
         <el-table-column label="状态" width="110">
           <template #default="{ row }">
@@ -25,7 +31,7 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="180">
+        <el-table-column label="操作" width="280">
           <template #default="{ row }">
             <el-button v-if="row.isRead !== 1" type="primary" link @click="markRead(row)">标记已读</el-button>
             <el-button
@@ -35,6 +41,14 @@
               @click="goNoticeTarget(row)"
             >
               {{ noticeJumpLabel(row) }}
+            </el-button>
+            <el-button
+              v-if="canBanReporter(row)"
+              type="danger"
+              link
+              @click="handleBanReporter(row)"
+            >
+              封禁举报人
             </el-button>
           </template>
         </el-table-column>
@@ -58,10 +72,12 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
-import { getNoticeList, markNoticeRead, markAllNoticeRead } from '../api/noticeApi';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import { getNoticeList, markNoticeRead, markAllNoticeRead, banReporterByNotice } from '../api/noticeApi';
+import { useUserStore } from '../store/userStore';
 
 const router = useRouter();
+const userStore = useUserStore();
 const noticeList = ref([]);
 const pagination = reactive({
   page: 1,
@@ -70,12 +86,13 @@ const pagination = reactive({
 });
 
 const bizTagType = (bizType) => {
-  const map = { AUDIT: 'warning', COMMENT: 'primary', CLAIM: 'success', FOUND_REPORT: 'warning', SYSTEM: 'info' };
+  const map = { AUDIT: 'warning', COMMENT: 'primary', CLAIM: 'success', FOUND_REPORT: 'warning', REPORT: 'danger', SYSTEM: 'info' };
   return map[bizType] || 'info';
 };
 
 const toUpper = (val) => String(val || '').trim().toUpperCase();
 const toText = (val) => String(val || '').trim();
+const REPORTER_ID_REGEX = /举报人ID[:：]\s*([0-9A-Za-z-]+)/;
 
 const isFoundReportNotice = (row) => {
   const bizType = toUpper(row?.bizType);
@@ -91,13 +108,57 @@ const isFoundReportNotice = (row) => {
   return !!toText(row?.bizId) && /(反馈找到了您的失物|收到新线索|有人反馈找到了)/.test(combined);
 };
 
+const isReportNotice = (row) => toUpper(row?.bizType) === 'REPORT';
+
+const reportMeta = (row) => {
+  const bizId = toText(row?.bizId);
+  let itemType = 'lost';
+  let itemId = '';
+  let reporterId = '';
+
+  if (bizId.includes(':')) {
+    const parts = bizId.split(':');
+    if (parts[0] === 'find' || parts[0] === 'lost') {
+      itemType = parts[0];
+    }
+    if (parts.length >= 2) {
+      itemId = parts[1] || '';
+    }
+    if (parts.length >= 3) {
+      reporterId = parts[2] || '';
+    }
+  } else {
+    itemId = bizId;
+  }
+
+  if (!reporterId) {
+    const content = toText(row?.content);
+    const match = content.match(REPORTER_ID_REGEX);
+    if (match && match[1]) {
+      reporterId = match[1];
+    }
+  }
+
+  if (!itemId) {
+    itemId = bizId;
+  }
+  return { itemType, itemId, reporterId };
+};
+
 const hasJumpTarget = (row) => {
   if (!toText(row?.bizId)) return false;
   const bizType = toUpper(row?.bizType);
+  if (bizType === 'REPORT') {
+    const meta = reportMeta(row);
+    return !!meta.itemId;
+  }
   return bizType === 'CLAIM' || bizType === 'FOUND_REPORT';
 };
 
-const noticeJumpLabel = (row) => (isFoundReportNotice(row) ? '查看失物' : '查看流程');
+const noticeJumpLabel = (row) => {
+  if (isReportNotice(row)) return '查看被举报信息';
+  return isFoundReportNotice(row) ? '查看失物' : '查看流程';
+};
 
 const loadNotices = async () => {
   const res = await getNoticeList({
@@ -122,6 +183,15 @@ const handleReadAll = async () => {
 };
 
 const goNoticeTarget = (row) => {
+  if (isReportNotice(row)) {
+    const meta = reportMeta(row);
+    if (!meta.itemId) {
+      ElMessage.warning('未找到被举报信息ID');
+      return;
+    }
+    router.push(`/info/detail/${meta.itemType}/${meta.itemId}`);
+    return;
+  }
   if (isFoundReportNotice(row)) {
     router.push(`/info/detail/lost/${row.bizId}`);
     return;
@@ -129,7 +199,43 @@ const goNoticeTarget = (row) => {
   router.push('/claim-center');
 };
 
-onMounted(loadNotices);
+const canBanReporter = (row) => {
+  if (!userStore.isAdmin) return false;
+  if (!isReportNotice(row)) return false;
+  return true;
+};
+
+const handleBanReporter = async (row) => {
+  const meta = reportMeta(row);
+  try {
+    await ElMessageBox.confirm(
+      `确认封禁举报人 ${meta.reporterId || '(自动识别)'} 吗？`,
+      '封禁确认',
+      {
+        confirmButtonText: '确认封禁',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    );
+    await banReporterByNotice(row.id);
+    ElMessage.success('已封禁举报人');
+    await loadNotices();
+  } catch (error) {
+    if (error === 'cancel' || error === 'close') return;
+    ElMessage.error(error?.message || '封禁失败');
+  }
+};
+
+onMounted(async () => {
+  if (userStore.token && !userStore.userInfo?.role) {
+    try {
+      await userStore.getUserInfo();
+    } catch (_) {
+      // 忽略，列表接口会自行处理未登录状态
+    }
+  }
+  await loadNotices();
+});
 </script>
 
 <style scoped>

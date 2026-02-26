@@ -34,6 +34,7 @@ public class WebConfig implements WebMvcConfigurer {
                 "/api/find/list",      // 招领列表
                 "/api/lost/detail/*",  // 失物详情
                 "/api/find/detail/*",  // 招领详情
+                "/api/match/recommend", // 智能匹配推荐
                 "/api/statistics",     // 统计数据
                 "/api/system/dict/data/type/*", // 字典数据公共接口
 

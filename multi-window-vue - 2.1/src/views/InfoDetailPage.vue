@@ -17,7 +17,7 @@
 </template>
 
 <script>
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import InfoDetail from '../components/lostFind/InfoDetail.vue';
 import CommentSection from '../components/lostFind/CommentSection.vue';
@@ -39,9 +39,15 @@ export default {
       router.back();
     };
     
-    // 直接获取路由参数（无需等待mounted）
-    id.value = String(route.params.id || '');
-    type.value = route.params.type === 'find' ? 'find' : 'lost';
+    // 监听路由参数，保证“同页面切换不同详情”时也会刷新
+    watch(
+      () => [route.params.id, route.params.type],
+      ([nextId, nextType]) => {
+        id.value = String(nextId || '');
+        type.value = nextType === 'find' ? 'find' : 'lost';
+      },
+      { immediate: true }
+    );
     
     return {
       id,

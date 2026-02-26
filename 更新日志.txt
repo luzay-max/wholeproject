@@ -272,3 +272,27 @@
 
 
 
+2026-02-26 更新日志（13.2 持续推进）
+1. 智能匹配推荐（详情页）：
+   - 新增后端匹配接口 `GET /api/match/recommend`，基于类型/地点/时间/关键词综合打分推荐候选。
+   - 新增 `SmartMatchController`、`ISmartMatchService`、`SmartMatchServiceImpl`、`MatchCandidateVO`。
+   - 详情页接入“智能匹配推荐”卡片与“查看详情”跳转。
+2. 举报与风控能力落地：
+   - 新增举报接口 `POST /api/report/item`，支持举报失物/招领信息。
+   - 新增风控配置与服务：`RiskControlProperties`、`RiskControlService`。
+   - 发布失物/招领、评论、举报接入频率限制与敏感词校验。
+   - 风控配置新增 `risk-control.*`（发布/评论/举报每分钟阈值、敏感词词库）。
+3. 详情页信息增强：
+   - 详情页新增“发布者信息”区块，展示账号名、头像、学院、唯一标识（用户ID）。
+   - 后端失物/招领详情接口补充发布者字段（publisherAccountName/publisherAvatar/publisherCollege/publisherId）。
+4. 通知中心举报处置闭环：
+   - 管理员通知中心新增 REPORT 类型展示、举报人ID列、跳转“查看被举报信息”。
+   - 新增管理员处置接口 `PUT /api/notice/report/{id}/ban-reporter`，支持一键封禁举报人。
+   - 封禁逻辑增加安全保护：禁止封禁当前登录账号、禁止封禁管理员。
+5. 兼容与修复：
+   - 兼容历史 REPORT 通知格式：在通知列表与封禁流程中自动识别举报人ID（内容解析 + 关联活动日志反查），并回写补齐。
+   - 修复“推荐详情切换后评论区不刷新”问题：CommentSection 监听 infoId/infoType 变化，重置并重载评论。
+   - 修复同页连续跳转不同详情时视图不刷新：InfoDetailPage 改为监听路由参数变化。
+6. 构建验证：
+   - 后端 `./mvnw -DskipTests compile` 通过。
+   - 前端 `npm run build` 通过。

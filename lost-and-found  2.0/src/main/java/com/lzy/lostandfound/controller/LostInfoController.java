@@ -6,8 +6,11 @@ import com.lzy.lostandfound.dto.LostInfoCreateRequest;
 import com.lzy.lostandfound.dto.LostInfoUpdateRequest;
 import com.lzy.lostandfound.entity.Activities;
 import com.lzy.lostandfound.entity.LostInfo;
+import com.lzy.lostandfound.entity.User;
 import com.lzy.lostandfound.service.IActivitiesService;
 import com.lzy.lostandfound.service.ILostInfoService;
+import com.lzy.lostandfound.service.IUserService;
+import com.lzy.lostandfound.service.RiskControlService;
 import com.lzy.lostandfound.utils.PublishTextQualityValidator;
 import com.lzy.lostandfound.utils.ThreadLocalUtil;
 import com.lzy.lostandfound.vo.Result;
@@ -39,6 +42,12 @@ public class LostInfoController {
     @Autowired
     private IActivitiesService activitiesService; // ✅ 新增注入活动服务
 
+    @Autowired
+    private IUserService userService;
+
+    @Autowired
+    private RiskControlService riskControlService;
+
     /**
      * 发布失物信息
      */
@@ -50,6 +59,11 @@ public class LostInfoController {
             Map<String, Object> map = ThreadLocalUtil.get();
             String userId = map.get("id").toString();
 
+            String rateError = riskControlService.checkPublishRate(userId);
+            if (rateError != null) {
+                return Result.error(rateError);
+            }
+
             String nameError = PublishTextQualityValidator.validateItemName(request.getName());
             if (nameError != null) {
                 return Result.error(nameError);
@@ -57,6 +71,18 @@ public class LostInfoController {
             String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
             if (locationError != null) {
                 return Result.error(locationError);
+            }
+            String sensitiveNameError = riskControlService.checkSensitiveContent(request.getName(), "物品名称");
+            if (sensitiveNameError != null) {
+                return Result.error(sensitiveNameError);
+            }
+            String sensitiveLocationError = riskControlService.checkSensitiveContent(request.getLocation(), "丢失地点");
+            if (sensitiveLocationError != null) {
+                return Result.error(sensitiveLocationError);
+            }
+            String sensitiveDescError = riskControlService.checkSensitiveContent(request.getDescription(), "物品描述");
+            if (sensitiveDescError != null) {
+                return Result.error(sensitiveDescError);
             }
 
             LostInfo lostInfo = new LostInfo();
@@ -164,7 +190,32 @@ public class LostInfoController {
             lostInfo.setUpdateTime(LocalDateTime.now());
             lostInfoService.updateById(lostInfo);
 
-            return Result.success(lostInfo);
+            Map<String, Object> detail = new java.util.HashMap<>();
+            detail.put("id", lostInfo.getId());
+            detail.put("userId", lostInfo.getUserId());
+            detail.put("name", lostInfo.getName());
+            detail.put("type", lostInfo.getType());
+            detail.put("location", lostInfo.getLocation());
+            detail.put("description", lostInfo.getDescription());
+            detail.put("images", lostInfo.getImages());
+            detail.put("contactInfo", lostInfo.getContactInfo());
+            detail.put("contactPhone", lostInfo.getContactPhone());
+            detail.put("contactEmail", lostInfo.getContactEmail());
+            detail.put("lostTime", lostInfo.getLostTime());
+            detail.put("status", lostInfo.getStatus());
+            detail.put("viewCount", lostInfo.getViewCount());
+            detail.put("publishTime", lostInfo.getPublishTime());
+            detail.put("updateTime", lostInfo.getUpdateTime());
+
+            User publisher = userService.getById(lostInfo.getUserId());
+            if (publisher != null) {
+                detail.put("publisherId", publisher.getId());
+                detail.put("publisherAccountName", publisher.getAccountName());
+                detail.put("publisherAvatar", publisher.getAvatar());
+                detail.put("publisherCollege", publisher.getCollege());
+            }
+
+            return Result.success(detail);
         } catch (Exception e) {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("获取详情失败");
@@ -207,6 +258,18 @@ public class LostInfoController {
             String locationError = PublishTextQualityValidator.validateLocation(request.getLocation());
             if (locationError != null) {
                 return Result.error(locationError);
+            }
+            String sensitiveNameError = riskControlService.checkSensitiveContent(request.getName(), "物品名称");
+            if (sensitiveNameError != null) {
+                return Result.error(sensitiveNameError);
+            }
+            String sensitiveLocationError = riskControlService.checkSensitiveContent(request.getLocation(), "丢失地点");
+            if (sensitiveLocationError != null) {
+                return Result.error(sensitiveLocationError);
+            }
+            String sensitiveDescError = riskControlService.checkSensitiveContent(request.getDescription(), "物品描述");
+            if (sensitiveDescError != null) {
+                return Result.error(sensitiveDescError);
             }
 
             LostInfo oldLostInfo = lostInfoService.getById(request.getId());

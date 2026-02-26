@@ -37,6 +37,31 @@
             </div>
           </div>
 
+          <!-- 发布者信息 -->
+          <div class="publisher-section" v-if="infoDetail.publisherId || infoDetail.userId">
+            <h3 class="section-title">发布者信息</h3>
+            <div class="publisher-card">
+              <el-avatar
+                :size="44"
+                :src="infoDetail.publisherAvatar || ''"
+                class="publisher-avatar"
+              >
+                {{ (infoDetail.publisherAccountName || '用户').slice(0, 1) }}
+              </el-avatar>
+              <div class="publisher-meta">
+                <div class="publisher-name">
+                  {{ infoDetail.publisherAccountName || '匿名发布者' }}
+                </div>
+                <div class="publisher-college">
+                  学院：{{ infoDetail.publisherCollege || '未填写' }}
+                </div>
+                <div class="publisher-id">
+                  唯一标识：{{ infoDetail.publisherId || infoDetail.userId }}
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- 图片展示 -->
           <div class="image-section" v-if="filteredImages.length">
             <h3 class="section-title">物品图片</h3>
@@ -89,6 +114,32 @@
                   <label class="detail-label">详细描述</label>
                   <p class="detail-value description">{{ infoDetail.description }}</p>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 智能匹配推荐 -->
+          <div class="match-section" v-if="matchLoading || matchList.length">
+            <h3 class="section-title">智能匹配推荐</h3>
+            <div v-loading="matchLoading" class="match-list">
+              <div
+                v-for="item in matchList"
+                :key="item.id"
+                class="match-item"
+              >
+                <div class="match-main">
+                  <div class="match-title">
+                    {{ item.name || '未命名物品' }}
+                  </div>
+                  <div class="match-meta">
+                    <span class="match-badge">{{ item.itemType === 'lost' ? '失物' : '招领' }}</span>
+                    <span class="match-type">{{ getCategoryLabel(item.type) || item.type }}</span>
+                    <span>匹配度 {{ item.matchScore || 0 }}</span>
+                    <span>{{ item.matchReason || '综合匹配' }}</span>
+                  </div>
+                  <div class="match-location">地点：{{ item.location || '未填写' }}</div>
+                </div>
+                <el-button type="primary" plain @click="openMatchDetail(item)">查看详情</el-button>
               </div>
             </div>
           </div>
@@ -173,6 +224,17 @@
               >
                 我找到了
               </el-button>
+
+              <el-button
+                type="danger"
+                plain
+                size="large"
+                @click="handleReportItem"
+                v-if="canReportItem"
+                class="report-btn"
+              >
+                举报信息
+              </el-button>
             </div>
           </div>
         </el-card>
@@ -196,6 +258,7 @@
 <script>
 import { ref, computed, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { 
   Clock, 
   ZoomIn, 
@@ -210,6 +273,8 @@ import {
 import { getLostDetail, updateLostStatus } from '../../api/lostApi'
 import { getFindDetail, updateFindStatus } from '../../api/findApi'
 import { applyClaim, reportFound } from '../../api/claimApi'
+import { getMatchRecommendations } from '../../api/matchApi'
+import { reportItem } from '../../api/reportApi'
 import { useUserStore } from '../../store/userStore';
 import { useInfoStore } from '../../store/infoStore';
 import { getDicts } from '../../api/system/dict/data';
@@ -231,11 +296,14 @@ export default {
   },
   emits: ['status-change'],
   setup(props, { emit }) {
+    const router = useRouter()
     const userStore = useUserStore();
     const infoStore = useInfoStore();
     const loading = ref(false)
     const dialogVisible = ref(false)
     const dialogImageUrl = ref('')
+    const matchLoading = ref(false)
+    const matchList = ref([])
 
     const infoDetail = ref({
       id: null, name: '', type: '', location: '', lostTime: null, findTime: null,
@@ -284,6 +352,10 @@ export default {
       && props.infoType === 'lost'
       && userStore.userInfo.id !== infoDetail.value.userId
     )
+    const canReportItem = computed(() =>
+      canShowActions.value
+      && userStore.userInfo.id !== infoDetail.value.userId
+    )
 
     function getCategoryIcon(value) {
       const typeKey = String(value ?? '').trim().toUpperCase()
@@ -327,9 +399,35 @@ export default {
           contactPhone: data.contactPhone ?? data.contact_phone ?? data.contactPhone,
           contactEmail: data.contactEmail ?? data.contact_email ?? data.contactEmail
         }
+        await loadMatchRecommendations()
       } finally {
         loading.value = false
       }
+    }
+
+    async function loadMatchRecommendations() {
+      matchLoading.value = true
+      try {
+        const res = await getMatchRecommendations({
+          itemType: props.infoType,
+          itemId: props.infoId,
+          limit: 4
+        })
+        const list = res?.data?.list || []
+        matchList.value = list.filter(item => item && item.id !== props.infoId)
+      } catch (_) {
+        matchList.value = []
+      } finally {
+        matchLoading.value = false
+      }
+    }
+
+    function openMatchDetail(item) {
+      if (!item?.id || !item?.itemType) return
+      router.push({
+        name: 'InfoDetailPage',
+        params: { id: item.id, type: item.itemType }
+      })
     }
 
     function previewImage(url) {
@@ -404,14 +502,36 @@ export default {
       }
     }
 
+    async function handleReportItem() {
+      try {
+        const { value } = await ElMessageBox.prompt('可选填写举报说明（最多200字）', '举报信息', {
+          confirmButtonText: '提交举报',
+          cancelButtonText: '取消',
+          inputPlaceholder: '例如：虚假信息、广告灌水、恶意内容',
+          inputPattern: /^$|^.{1,200}$/,
+          inputErrorMessage: '说明最多200字'
+        })
+        await reportItem({
+          itemType: props.infoType,
+          itemId: props.infoId,
+          reason: value || ''
+        })
+        ElMessage.success('举报已提交，感谢反馈')
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        ElMessage.error(error?.message || '举报失败');
+      }
+    }
+
     watch(() => props.infoId, loadDetail, { immediate: true })
 
     return {
       infoDetail, filteredImages, imageGridClass, loading, dialogVisible, dialogImageUrl,
-      canShowActions, canUpdateStatus, canApplyClaim, canReportFound, getCategoryLabel, getCategoryIcon,
+      matchLoading, matchList,
+      canShowActions, canUpdateStatus, canApplyClaim, canReportFound, canReportItem, getCategoryLabel, getCategoryIcon,
       formatDate, previewImage, 
-      handleContact, handleUpdateStatus, handleApplyClaim, handleReportFound,
-      info_status, info_type
+      handleContact, handleUpdateStatus, handleApplyClaim, handleReportFound, handleReportItem,
+      info_status, info_type, openMatchDetail
     }
   }
 }
@@ -522,6 +642,8 @@ export default {
 
 .image-section,
 .detail-section,
+.match-section,
+.publisher-section,
 .contact-section,
 .action-section {
   padding: 12px;
@@ -530,6 +652,91 @@ export default {
 
 .action-section {
   border-bottom: none;
+}
+
+.publisher-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--color-border-secondary);
+  border-radius: 10px;
+  background: #f8fafc;
+}
+
+.publisher-avatar {
+  border: 1px solid var(--color-border-secondary);
+}
+
+.publisher-meta {
+  min-width: 0;
+}
+
+.publisher-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.publisher-college,
+.publisher-id {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  word-break: break-all;
+}
+
+.match-list {
+  display: grid;
+  gap: 8px;
+}
+
+.match-item {
+  border: 1px solid var(--color-border-secondary);
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.match-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.match-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.match-meta {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.match-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(37, 99, 235, 0.12);
+  color: #1d4ed8;
+}
+
+.match-type {
+  color: var(--color-text-primary);
+}
+
+.match-location {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--color-text-tertiary);
 }
 
 .image-gallery {
@@ -671,6 +878,10 @@ export default {
   border: 1px solid #16a34a;
 }
 
+.report-btn {
+  border-radius: 10px;
+}
+
 .contact-btn:hover,
 .status-btn:hover {
   transform: translateY(-1px);
@@ -716,8 +927,14 @@ export default {
     align-items: stretch;
   }
 
+  .match-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
   .contact-btn,
-  .status-btn {
+  .status-btn,
+  .report-btn {
     width: 100%;
     justify-content: center;
   }

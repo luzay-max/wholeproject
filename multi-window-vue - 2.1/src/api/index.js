@@ -9,6 +9,7 @@ import * as userApi from './userApi';
 import * as activityApi from './activityApi';
 import * as honorApi from './honorApi';
 import * as aiApi from './aiApi';
+import * as reportApi from './reportApi';
 
 // 导出所有 API 函数
 export default {
@@ -19,7 +20,8 @@ export default {
   ...userApi,
   ...activityApi,
   ...honorApi,
-  ...aiApi
+  ...aiApi,
+  ...reportApi
 };
 
 // 单独导出各个函数以便按需导入
@@ -31,3 +33,4 @@ export * from './userApi';
 export * from './activityApi';
 export * from './honorApi';
 export * from './aiApi';
+export * from './reportApi';
