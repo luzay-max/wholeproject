@@ -2,6 +2,7 @@ package com.lzy.lostandfound.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.lzy.lostandfound.entity.*;
 import com.lzy.lostandfound.mapper.ActivitiesMapper;
 import com.lzy.lostandfound.mapper.CommentMapper;
@@ -22,6 +23,7 @@ import java.io.IOException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
@@ -806,9 +808,16 @@ public class AdminController {
     @PostMapping("/audit/batchPass")
     @CacheEvict(cacheNames = {"LostListCache","FindListCache"}, allEntries = true)
     @Log("AUDIT")
-    public Result batchPass(@Valid @RequestBody List<IdAndType> idAndTypeList) {
+    public Result batchPass(@RequestBody JsonNode payload) {
         try {
+            List<IdAndType> idAndTypeList = resolveBatchPassItems(payload);
+            if (idAndTypeList.isEmpty()) {
+                return Result.error("批量通过参数不能为空");
+            }
             for (IdAndType idAndType : idAndTypeList) {
+                if (idAndType == null || !StringUtils.hasText(idAndType.getId()) || !StringUtils.hasText(idAndType.getType())) {
+                    continue;
+                }
                 if ("lost".equalsIgnoreCase(idAndType.getType())) {
                     LostInfo lostInfo = lostInfoService.getById(idAndType.getId());
                     if (lostInfo != null) {
@@ -861,6 +870,93 @@ public class AdminController {
             com.lzy.lostandfound.utils.LogUtil.error("执行异常", e);
             return Result.error("批量通过失败");
         }
+    }
+
+    private List<IdAndType> resolveBatchPassItems(JsonNode payload) {
+        List<IdAndType> result = new ArrayList<>();
+        if (payload == null || payload.isNull()) {
+            return result;
+        }
+        if (payload.isArray()) {
+            appendIdAndTypeArray(payload, result);
+            return result;
+        }
+        if (!payload.isObject()) {
+            return result;
+        }
+
+        JsonNode arrayNode = firstArrayField(payload, "idAndTypeList", "list", "items", "data");
+        if (arrayNode != null) {
+            appendIdAndTypeArray(arrayNode, result);
+            if (!result.isEmpty()) {
+                return result;
+            }
+        }
+
+        JsonNode idsNode = payload.get("ids");
+        if (idsNode != null && idsNode.isArray()) {
+            String explicitType = normalizeType(payload.path("type").asText(null));
+            for (JsonNode idNode : idsNode) {
+                String id = idNode == null ? null : idNode.asText(null);
+                if (!StringUtils.hasText(id)) {
+                    continue;
+                }
+                String type = explicitType != null ? explicitType : detectItemTypeById(id);
+                if (type == null) {
+                    continue;
+                }
+                result.add(new IdAndType(id, type, null));
+            }
+        }
+        return result;
+    }
+
+    private JsonNode firstArrayField(JsonNode payload, String... keys) {
+        for (String key : keys) {
+            JsonNode node = payload.get(key);
+            if (node != null && node.isArray()) {
+                return node;
+            }
+        }
+        return null;
+    }
+
+    private void appendIdAndTypeArray(JsonNode arrayNode, List<IdAndType> target) {
+        for (JsonNode node : arrayNode) {
+            if (node == null || !node.isObject()) {
+                continue;
+            }
+            String id = node.path("id").asText(null);
+            String type = normalizeType(node.path("type").asText(null));
+            if (!StringUtils.hasText(id) || type == null) {
+                continue;
+            }
+            target.add(new IdAndType(id, type, node.path("reason").asText(null)));
+        }
+    }
+
+    private String normalizeType(String raw) {
+        if (!StringUtils.hasText(raw)) {
+            return null;
+        }
+        String value = raw.trim().toLowerCase();
+        if ("lost".equals(value) || "find".equals(value)) {
+            return value;
+        }
+        return null;
+    }
+
+    private String detectItemTypeById(String id) {
+        if (!StringUtils.hasText(id)) {
+            return null;
+        }
+        if (lostInfoService.getById(id) != null) {
+            return "lost";
+        }
+        if (findInfoService.getById(id) != null) {
+            return "find";
+        }
+        return null;
     }
 
     @PostMapping("/audit/reject")

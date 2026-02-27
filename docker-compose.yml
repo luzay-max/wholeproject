@@ -1,0 +1,74 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: lostfound-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root1234
+      MYSQL_DATABASE: lose_and_found
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    command: --default-authentication-plugin=mysql_native_password
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./lose_and_found.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./update_schema_v3_logic_delete.sql:/docker-entrypoint-initdb.d/02_logic_delete.sql:ro
+      - ./update_schema_v4_claim_notice.sql:/docker-entrypoint-initdb.d/03_claim_notice.sql:ro
+      - ./sys_dict_schema.sql:/docker-entrypoint-initdb.d/04_dict_schema.sql:ro
+      - ./sys_dict_init.sql:/docker-entrypoint-initdb.d/05_dict_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -proot1234 --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    container_name: lostfound-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./lost-and-found  2.0
+      dockerfile: Dockerfile
+    container_name: lostfound-backend
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/lose_and_found?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root1234
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      AI_ENABLED: "false"
+      TZ: Asia/Shanghai
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./multi-window-vue - 2.1
+      dockerfile: Dockerfile
+      args:
+        VITE_APP_BASE_API: /api
+    container_name: lostfound-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:
+  redis_data:
+

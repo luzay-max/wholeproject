@@ -867,3 +867,115 @@
 * AI 未配置：`AI服务未配置，请联系管理员`
 * 调用超时：`AI服务超时，请稍后重试`
 * 调用频率过高：`请求过于频繁，请稍后再试`
+
+## 13. 2026-02-27 增量变更（认领闭环/通知/举报/匹配/看板）
+
+### 13.1 认领闭环接口
+
+#### 提交认领申请
+* `POST /api/claim/apply`
+* 请求体：
+```json
+{
+  "itemType": "find",
+  "itemId": "xxx",
+  "applyNote": "这是我的物品"
+}
+```
+* 说明：
+  * 仅允许 `itemType=find`
+  * 不允许认领自己发布的信息
+  * 状态流转：`APPLIED`
+
+#### 失物线索提醒（我找到了）
+* `POST /api/claim/report-found`
+* 请求体：
+```json
+{
+  "itemId": "xxx",
+  "note": "在图书馆门口看到类似物品"
+}
+```
+
+#### 提交认领凭证
+* `POST /api/claim/{id}/proof`
+* 请求体：
+```json
+{
+  "proofText": "钱包内有学生卡，姓名为张三",
+  "proofImages": "[\"https://...\"]"
+}
+```
+* 状态流转：`APPLIED -> PROOF_SUBMITTED`
+
+#### 发布者确认/驳回
+* `POST /api/claim/{id}/confirm`
+* 请求体：
+```json
+{
+  "approved": true,
+  "rejectReason": ""
+}
+```
+* 状态流转：
+  * 通过：`PROOF_SUBMITTED -> CONFIRMED`
+  * 驳回：`PROOF_SUBMITTED -> REJECTED`
+
+#### 完成归还
+* `POST /api/claim/{id}/complete`
+* 状态流转：`CONFIRMED -> COMPLETED`
+* 完成后同步将对应失物/招领状态更新为 `SOLVED`
+
+#### 我的认领申请
+* `GET /api/claim/my/applications?page=1&pageSize=10&status=APPLIED`
+
+#### 待我确认
+* `GET /api/claim/my/pending-confirm?page=1&pageSize=10&status=PROOF_SUBMITTED`
+
+### 13.2 通知中心接口
+
+#### 获取通知列表
+* `GET /api/notice/list?page=1&pageSize=10&isRead=0`
+
+#### 获取未读数
+* `GET /api/notice/unread-count`
+
+#### 标记单条已读
+* `PUT /api/notice/{id}/read`
+
+#### 全部已读
+* `PUT /api/notice/read-all`
+
+#### 管理员封禁举报人
+* `PUT /api/notice/report/{id}/ban-reporter`
+* 说明：仅管理员可操作，且禁止封禁管理员与当前登录账号
+
+### 13.3 举报接口
+
+#### 举报失物/招领信息
+* `POST /api/report/item`
+* 请求体：
+```json
+{
+  "itemType": "lost",
+  "itemId": "xxx",
+  "reason": "疑似恶意或违规内容"
+}
+```
+* 说明：
+  * 触发频率限制与敏感词校验
+  * 自动通知管理员处理
+
+### 13.4 智能匹配接口
+
+#### 详情页候选推荐
+* `GET /api/match/recommend?itemType=lost&itemId=xxx&limit=5`
+* 说明：按类型、地点、时间、关键词综合评分返回候选列表
+
+### 13.5 管理看板接口
+
+#### 总览指标
+* `GET /api/admin/dashboard/overview`
+
+#### 趋势数据
+* `GET /api/admin/dashboard/trend?days=7`

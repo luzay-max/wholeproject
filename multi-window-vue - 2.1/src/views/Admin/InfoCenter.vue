@@ -313,6 +313,7 @@ const auditList = ref([]);
 const auditPagination = reactive({ page: 1, size: 10, total: 0 });
 const auditFilter = reactive({ type: '', keyword: '' });
 const selectedAuditIds = ref([]);
+const selectedAuditItems = ref([]);
 const rejectDialogVisible = ref(false);
 const rejectReason = ref('');
 const currentAuditItem = ref(null);
@@ -489,6 +490,7 @@ const fetchAuditData = async () => {
 };
 
 const handleAuditSelectionChange = (selection) => {
+  selectedAuditItems.value = selection;
   selectedAuditIds.value = selection.map(item => item.id);
 };
 
@@ -504,8 +506,19 @@ const handleApprove = async (row) => {
 
 const handleBatchApprove = async () => {
   try {
-    // 批量通过统一使用 { ids: [] } 请求体
-    await batchAuditApprove({ ids: selectedAuditIds.value });
+    const payload = selectedAuditItems.value
+      .map(item => ({
+        id: item.id,
+        type: getAuditTypeValue(item)
+      }))
+      .filter(item => item.id && (item.type === 'lost' || item.type === 'find'));
+
+    if (!payload.length) {
+      ElMessage.warning('请选择有效的待审核数据');
+      return;
+    }
+
+    await batchAuditApprove(payload);
     ElMessage.success('批量通过成功');
     fetchAuditData();
   } catch (error) {

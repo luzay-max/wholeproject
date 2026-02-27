@@ -1,3 +1,18 @@
+2026-02-27 更新日志（13.3、13.4 完成与批量审核修复）
+1. 管理端“批量通过”兼容性修复：
+   - 修复信息管理中心批量通过报错：`Cannot deserialize value of type ArrayList<IdAndType> from Object value`。
+   - 后端 `POST /api/admin/audit/batchPass` 改为兼容多种请求体：标准数组、`{list/items/data}` 包裹结构、历史 `{ids:[...]}` 结构。
+   - 前端 `InfoCenter.vue` 批量通过请求统一改为标准数组 `[{id,type}]`，减少前后端协议不一致风险。
+2. 13.3 线上运行与 CI 配置完成：
+   - 新增后端 Dockerfile、前端 Dockerfile + Nginx 配置、根目录 `docker-compose.yml`。
+   - 新增 GitHub Actions 流水线 `.github/workflows/ci.yml`，接入后端测试与前端构建校验。
+3. 13.4 测试与文档补齐：
+   - 新增审核、认领、风控、通知等核心链路单元/控制器测试用例。
+   - 同步更新 `总计划书.md`、`开发文档.md`、`API文档.md`，明确 13.2 本阶段暂不实施，13.3/13.4 已完成。
+4. 验证结果：
+   - 后端测试通过：`./mvnw -B test`（22 tests, 0 failures）。
+   - 前端构建通过：`npm run build`。
+
 2026-02-25 补充更新（认领流程、通知跳转、光荣榜与看板）
 1. 认领流程语义修正与分流：
    - 详情页操作按钮按类型分离：`find` 显示“申请认领”，`lost` 显示“我找到了”。
