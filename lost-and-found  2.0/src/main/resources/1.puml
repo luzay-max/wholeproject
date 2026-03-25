@@ -1,0 +1,98 @@
+@startuml
+top to bottom direction
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+
+class 用户 {
+  +id : String
+  +username : String
+  +password : String
+  +name : String
+  +phone : String
+  +email : String
+  +avatar : String
+  +role : String
+  +createTime : DateTime
+  +updateTime : DateTime
+}
+
+class 失物信息 {
+  +id : String
+  +userId : String
+  +name : String
+  +type : String
+  +location : String
+  +description : String
+  +images : String
+  +contactPhone : String
+  +contactEmail : String
+  +status : String
+  +rejectReason : String
+  +viewCount : Integer
+  +publishTime : DateTime
+  +updateTime : DateTime
+}
+
+class 招领信息 {
+  +id : String
+  +userId : String
+  +name : String
+  +type : String
+  +location : String
+  +description : String
+  +images : String
+  +contactPhone : String
+  +contactEmail : String
+  +status : String
+  +rejectReason : String
+  +viewCount : Integer
+  +publishTime : DateTime
+  +updateTime : DateTime
+}
+
+class 评论 {
+  +id : String
+  +infoId : String
+  +infoType : String
+  +userId : String
+  +content : Text
+  +likeCount : Integer
+  +createTime : DateTime
+  +username : String
+  +avatar : String
+}
+
+class 评论点赞 {
+  +id : String
+  +commentId : String
+  +userId : String
+  +createTime : DateTime
+}
+
+class 用户动态 {
+  +id : String
+  +userId : String
+  +action : String
+  +itemType : String
+  +itemId : String
+  +content : String
+  +createTime : DateTime
+}
+
+' ================== 类关系 ==================
+
+用户 "1" -- "0..*" 失物信息 : 发布
+用户 "1" -- "0..*" 招领信息 : 发布
+
+失物信息 "1" -- "0..*" 评论 : 被评论
+招领信息 "1" -- "0..*" 评论 : 被评论
+
+用户 "1" -- "0..*" 评论 : 发表
+评论 "1" -- "0..*" 评论点赞 : 拥有
+
+用户 "1" -- "0..*" 评论点赞 : 点赞
+评论点赞 "*" -- "1" 评论 : 属于
+
+用户 "1" -- "0..*" 用户动态 : 产生
+
+@enduml
