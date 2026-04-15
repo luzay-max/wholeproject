@@ -92,7 +92,17 @@
               <el-tag v-else type="danger">停用</el-tag>
             </template>
           </el-table-column>
-          <el-table-column v-if="!isMobile" label="备注" align="center" prop="remark" :show-overflow-tooltip="true" />
+          <el-table-column v-if="!isMobile && isAdminConsoleMenuType" label="图标" align="center" min-width="120">
+            <template #default="scope">
+              {{ getAdminMenuMeta(scope.row).icon }}
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isMobile && isAdminConsoleMenuType" label="显示位置" align="center" min-width="220">
+            <template #default="scope">
+              {{ formatAdminMenuContexts(scope.row) }}
+            </template>
+          </el-table-column>
+          <el-table-column v-if="!isMobile && !isAdminConsoleMenuType" label="备注" align="center" prop="remark" :show-overflow-tooltip="true" />
           <el-table-column v-if="!isMobile" label="创建时间" align="center" prop="createTime" width="180" />
           <el-table-column
             label="操作"
@@ -136,13 +146,13 @@
         <el-form-item label="数据键值" prop="dictValue">
           <el-input v-model="form.dictValue" placeholder="请输入数据键值" />
         </el-form-item>
-        <el-form-item label="样式属性" prop="cssClass">
+        <el-form-item v-if="!isAdminConsoleMenuType" label="样式属性" prop="cssClass">
           <el-input v-model="form.cssClass" placeholder="请输入样式属性" />
         </el-form-item>
         <el-form-item label="显示排序" prop="dictSort">
           <el-input-number v-model="form.dictSort" controls-position="right" :min="0" />
         </el-form-item>
-        <el-form-item label="回显样式" prop="listClass">
+        <el-form-item v-if="!isAdminConsoleMenuType" label="回显样式" prop="listClass">
           <el-select v-model="form.listClass" style="width: 100%">
             <el-option
               v-for="item in listClassOptions"
@@ -152,14 +162,42 @@
             />
           </el-select>
         </el-form-item>
+        <template v-if="isAdminConsoleMenuType">
+          <el-form-item label="菜单图标">
+            <el-select v-model="form.menuMeta.icon" style="width: 100%">
+              <el-option
+                v-for="item in adminMenuIconOptions"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item label="显示位置">
+            <el-checkbox-group v-model="form.menuMeta.contexts">
+              <el-checkbox
+                v-for="item in adminMenuContextOptions"
+                :key="item.value"
+                :label="item.value"
+              >
+                {{ item.label }}
+              </el-checkbox>
+            </el-checkbox-group>
+          </el-form-item>
+        </template>
         <el-form-item label="状态" prop="status">
           <el-radio-group v-model="form.status">
             <el-radio label="0">正常</el-radio>
             <el-radio label="1">停用</el-radio>
           </el-radio-group>
         </el-form-item>
-        <el-form-item label="备注" prop="remark">
+        <el-form-item v-if="!isAdminConsoleMenuType" label="备注" prop="remark">
           <el-input v-model="form.remark" type="textarea" placeholder="请输入内容" />
+        </el-form-item>
+        <el-form-item v-else label="配置说明">
+          <div class="menu-config-hint">
+            当前这类字典只支持控制菜单名称、路径、排序、状态、图标和显示位置，样式属性等无效字段会在保存时自动清空。
+          </div>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -228,6 +266,12 @@ const pageCount = computed(() => {
   return Math.max(1, Math.ceil(totalCount / size))
 })
 
+const currentDictType = computed(() => {
+  return String(form.value?.dictType || queryParams.value?.dictType || defaultDictType.value || '').trim()
+})
+
+const isAdminConsoleMenuType = computed(() => currentDictType.value === 'admin_console_menu')
+
 const listClassOptions = ref([
   { value: 'default', label: '默认' },
   { value: 'primary', label: '主要' },
@@ -236,6 +280,74 @@ const listClassOptions = ref([
   { value: 'warning', label: '警告' },
   { value: 'danger', label: '危险' }
 ])
+
+const adminMenuIconOptions = ref([
+  { value: 'List', label: 'List' },
+  { value: 'DataAnalysis', label: 'DataAnalysis' },
+  { value: 'User', label: 'User' },
+  { value: 'DocumentChecked', label: 'DocumentChecked' },
+  { value: 'Collection', label: 'Collection' },
+  { value: 'ChatDotRound', label: 'ChatDotRound' },
+  { value: 'Trophy', label: 'Trophy' },
+  { value: 'Operation', label: 'Operation' },
+  { value: 'Monitor', label: 'Monitor' }
+])
+
+const adminMenuContextOptions = ref([
+  { value: 'sidebar', label: '侧边栏' },
+  { value: 'dropdown', label: '顶部下拉' },
+  { value: 'mobile', label: '移动端菜单' },
+  { value: 'breadcrumb', label: '面包屑标题' }
+])
+
+const defaultAdminMenuMeta = () => ({
+  icon: 'List',
+  contexts: ['sidebar', 'dropdown', 'mobile', 'breadcrumb']
+})
+
+const parseAdminMenuMeta = (remark) => {
+  const fallback = defaultAdminMenuMeta()
+  const text = String(remark || '').trim()
+  if (!text) return fallback
+
+  try {
+    const parsed = JSON.parse(text)
+    const contexts = Array.isArray(parsed?.contexts) && parsed.contexts.length
+      ? parsed.contexts.filter((item) => adminMenuContextOptions.value.some((option) => option.value === item))
+      : fallback.contexts
+
+    return {
+      icon: adminMenuIconOptions.value.some((item) => item.value === parsed?.icon) ? parsed.icon : fallback.icon,
+      contexts
+    }
+  } catch (_) {
+    return fallback
+  }
+}
+
+const buildAdminMenuRemark = (menuMeta) => {
+  const normalizedContexts = Array.isArray(menuMeta?.contexts) && menuMeta.contexts.length
+    ? menuMeta.contexts.filter((item) => adminMenuContextOptions.value.some((option) => option.value === item))
+    : defaultAdminMenuMeta().contexts
+
+  const icon = adminMenuIconOptions.value.some((item) => item.value === menuMeta?.icon)
+    ? menuMeta.icon
+    : defaultAdminMenuMeta().icon
+
+  return JSON.stringify({
+    icon,
+    contexts: normalizedContexts
+  })
+}
+
+const getAdminMenuMeta = (row) => parseAdminMenuMeta(row?.remark)
+
+const formatAdminMenuContexts = (row) => {
+  const contexts = getAdminMenuMeta(row).contexts
+  return contexts
+    .map((value) => adminMenuContextOptions.value.find((item) => item.value === value)?.label || value)
+    .join('、')
+}
 
 function getTypes(dictId) {
   return getType(dictId).then((response) => {
@@ -277,7 +389,8 @@ function reset() {
     remark: undefined,
     dictType: defaultDictType.value,
     listClass: 'default',
-    cssClass: undefined
+    cssClass: undefined,
+    menuMeta: defaultAdminMenuMeta()
   }
 }
 
@@ -308,10 +421,26 @@ function handleUpdate(row) {
   reset()
   const dictCode = row?.dictCode || ids.value
   getData(dictCode).then((response) => {
-    form.value = response.data
+    form.value = {
+      ...response.data,
+      menuMeta: parseAdminMenuMeta(response?.data?.remark)
+    }
     open.value = true
     title.value = '修改字典数据'
   })
+}
+
+function normalizeSubmitPayload() {
+  const payload = { ...form.value }
+
+  if (payload.dictType === 'admin_console_menu') {
+    payload.cssClass = ''
+    payload.listClass = ''
+    payload.remark = buildAdminMenuRemark(payload.menuMeta)
+  }
+
+  delete payload.menuMeta
+  return payload
 }
 
 function submitForm() {
@@ -319,8 +448,9 @@ function submitForm() {
   dataRef.value.validate((valid) => {
     if (!valid) return
 
-    const request = form.value.dictCode != null ? updateData(form.value) : addData(form.value)
-    const message = form.value.dictCode != null ? '修改成功' : '新增成功'
+    const payload = normalizeSubmitPayload()
+    const request = payload.dictCode != null ? updateData(payload) : addData(payload)
+    const message = payload.dictCode != null ? '修改成功' : '新增成功'
 
     request.then(() => {
       ElMessage.success(message)
@@ -409,5 +539,11 @@ onBeforeUnmount(() => {
   display: inline-flex !important;
   align-items: center;
   visibility: visible !important;
+}
+
+.menu-config-hint {
+  color: #64748b;
+  line-height: 1.6;
+  font-size: 13px;
 }
 </style>

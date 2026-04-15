@@ -35,6 +35,8 @@ public class RiskControlService {
     }
 
     public String checkSensitiveContent(String value, String fieldName) {
+        // 这里是项目里“敏感词屏蔽”的主入口。
+        // 当前策略不是把内容替换成 ***，而是在命中后直接拦截提交并返回错误提示。
         if (!riskControlProperties.isEnabled() || !riskControlProperties.isSensitiveEnabled()) {
             return null;
         }
@@ -58,6 +60,7 @@ public class RiskControlService {
     }
 
     private String checkRateLimit(String scene, String userId, int maxPerMinute, String exceedMessage) {
+        // 发布/评论/举报统一按“每分钟计数”做风控限流，依赖 Redis 自增键实现。
         if (!riskControlProperties.isEnabled() || !riskControlProperties.isRateLimitEnabled()) {
             return null;
         }
@@ -81,9 +84,10 @@ public class RiskControlService {
     }
 
     private String normalize(String value) {
+        // 敏感词匹配前会做简单归一化：转小写、去空白。
+        // 因此“诈 骗”仍会命中，但同音字、特殊符号拆分等复杂绕过暂未覆盖。
         return value
                 .toLowerCase(Locale.ROOT)
                 .replaceAll("\\s+", "");
     }
 }
-

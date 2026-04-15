@@ -47,6 +47,8 @@ public class SmartMatchServiceImpl implements ISmartMatchService {
 
     @Override
     public List<MatchCandidateVO> recommend(String itemType, String itemId, Integer limit) {
+        // 智能匹配本身不做敏感词校验，它只消费已存在的数据做推荐。
+        // 安全前提是发布/编辑阶段已经过 RiskControlService 的内容校验。
         String normalizedType = normalizeItemType(itemType);
         if (!StringUtils.hasText(normalizedType) || !StringUtils.hasText(itemId)) {
             return Collections.emptyList();
@@ -251,6 +253,7 @@ public class SmartMatchServiceImpl implements ISmartMatchService {
     }
 
     private int scoreKeyword(SourceItem source, CandidateItem candidate) {
+        // 这里只是做关键词相关度评分，不是敏感词过滤。
         String sourceText = normalizeText(source.name + " " + source.description);
         String targetText = normalizeText(candidate.name + " " + candidate.description);
         if (!StringUtils.hasText(sourceText) || !StringUtils.hasText(targetText)) {
@@ -270,6 +273,8 @@ public class SmartMatchServiceImpl implements ISmartMatchService {
     }
 
     private Set<String> extractTokens(String text) {
+        // 简单 token 提取：连续字母数字或连续中文。
+        // 目的是提升匹配效果，不承担内容审核职责。
         if (!StringUtils.hasText(text)) {
             return Collections.emptySet();
         }
@@ -365,4 +370,3 @@ public class SmartMatchServiceImpl implements ISmartMatchService {
     private record ScoredCandidate(CandidateItem candidate, ScoreResult score) {
     }
 }
-

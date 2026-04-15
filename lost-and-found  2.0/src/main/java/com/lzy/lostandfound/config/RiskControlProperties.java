@@ -17,6 +17,7 @@ public class RiskControlProperties {
     private int publishPerMinute = 6;
     private int commentPerMinute = 20;
     private int reportPerMinute = 10;
+    // 默认敏感词词库。当前项目未看到额外配置覆盖时，会直接使用这里的默认值。
     private List<String> sensitiveWords = new ArrayList<>(List.of(
             "赌博",
             "诈骗",
@@ -26,4 +27,3 @@ public class RiskControlProperties {
             "裸聊"
     ));
 }
-

@@ -43,6 +43,8 @@ public class AiAssistController {
     }
 
     private void sanitizeRequestInPlace(AiDescriptionSuggestRequest request) {
+        // AI 辅助在入模前先做一层轻量脱敏，避免把手机号/邮箱直接送给模型。
+        // 这里不是敏感词词库校验，主要针对联系方式这类隐私字段。
         request.setName(maskSensitive(request.getName()));
         request.setType(maskSensitive(request.getType()));
         request.setLocation(maskSensitive(request.getLocation()));

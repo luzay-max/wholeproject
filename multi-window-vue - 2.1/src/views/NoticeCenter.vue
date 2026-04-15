@@ -17,7 +17,7 @@
             <el-tag :type="bizTagType(row.bizType)">{{ row.bizType }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="举报人ID" width="220">
+        <el-table-column label="发起人ID" width="220">
           <template #default="{ row }">
             <span v-if="isReportNotice(row)">{{ reportMeta(row).reporterId || '-' }}</span>
             <span v-else>-</span>
@@ -48,7 +48,7 @@
               link
               @click="handleBanReporter(row)"
             >
-              封禁举报人
+              封禁发起人
             </el-button>
           </template>
         </el-table-column>
@@ -92,7 +92,7 @@ const bizTagType = (bizType) => {
 
 const toUpper = (val) => String(val || '').trim().toUpperCase();
 const toText = (val) => String(val || '').trim();
-const REPORTER_ID_REGEX = /举报人ID[:：]\s*([0-9A-Za-z-]+)/;
+const REPORTER_ID_REGEX = /发起人ID[:：]\s*([0-9A-Za-z-]+)/;
 
 const isFoundReportNotice = (row) => {
   const bizType = toUpper(row?.bizType);
@@ -209,7 +209,7 @@ const handleBanReporter = async (row) => {
   const meta = reportMeta(row);
   try {
     await ElMessageBox.confirm(
-      `确认封禁举报人 ${meta.reporterId || '(自动识别)'} 吗？`,
+      `确认封禁发起人 ${meta.reporterId || '(自动识别)'} 吗？`,
       '封禁确认',
       {
         confirmButtonText: '确认封禁',
@@ -218,7 +218,7 @@ const handleBanReporter = async (row) => {
       }
     );
     await banReporterByNotice(row.id);
-    ElMessage.success('已封禁举报人');
+    ElMessage.success('已封禁发起人');
     await loadNotices();
   } catch (error) {
     if (error === 'cancel' || error === 'close') return;

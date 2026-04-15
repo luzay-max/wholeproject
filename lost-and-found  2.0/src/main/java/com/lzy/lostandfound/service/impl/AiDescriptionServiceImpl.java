@@ -121,6 +121,7 @@ public class AiDescriptionServiceImpl implements IAiDescriptionService {
     }
 
     private void applyRateLimit(String userId) {
+        // AI 辅助单独做了按分钟限流，避免用户高频刷模型接口。
         String minutePart = LocalDateTime.now(ZoneId.of("Asia/Shanghai")).format(LIMIT_MINUTE_FORMATTER);
         String key = "ai:suggest:limit:" + userId + ":" + minutePart;
         Long count = redisTemplate.opsForValue().increment(key);
@@ -174,6 +175,8 @@ public class AiDescriptionServiceImpl implements IAiDescriptionService {
     }
 
     private NormalizedInput normalizeRequest(AiDescriptionSuggestRequest request) {
+        // 这里会再次做手机号/邮箱脱敏，并清洗图片 URL。
+        // 因此 AI 辅助的重点是“隐私脱敏 + 输入清洗”，而不是复用 RiskControlService 的敏感词名单。
         String itemKind = lower(trimToEmpty(request.getItemKind()));
         String name = maskSensitive(trimToEmpty(request.getName()));
         String type = maskSensitive(trimToEmpty(request.getType()));
@@ -210,6 +213,7 @@ public class AiDescriptionServiceImpl implements IAiDescriptionService {
     }
 
     private String buildSystemPrompt() {
+        // 通过系统提示约束模型不要输出联系方式、价格推断和编造内容。
         return "你是校园失物招领信息助手。请根据给定信息输出一段中文“客观简洁”描述。"
                 + "禁止输出联系方式、价格推断、主观判断和编造内容。"
                 + "如果信息不确定，请省略不确定内容。输出只允许一段正文，不要列表。";
@@ -284,6 +288,7 @@ public class AiDescriptionServiceImpl implements IAiDescriptionService {
     }
 
     private String maskSensitive(String value) {
+        // 当前 AI 脱敏只覆盖邮箱和手机号。
         if (!StringUtils.hasText(value)) {
             return value;
         }

@@ -115,6 +115,8 @@ const DEFAULT_MENU_ITEMS = [
   }
 ]
 
+const PROTECTED_MENU_PATHS = ['/admin/dict']
+
 const menuItemsRef = ref([])
 let menuLoaded = false
 let menuPromise = null
@@ -152,12 +154,21 @@ const normalizeMenuItem = (raw) => {
     dropdown: contexts.includes('dropdown'),
     mobile: contexts.includes('mobile'),
     breadcrumb: contexts.includes('breadcrumb'),
-    hidden: String(raw.status ?? '0') !== '0'
+    hidden: PROTECTED_MENU_PATHS.includes(path) ? false : String(raw.status ?? '0') !== '0'
   }
 }
 
 const normalizeMenuItems = (items) => {
-  return (Array.isArray(items) ? items : [])
+  const mergedItems = [...(Array.isArray(items) ? items : [])]
+
+  DEFAULT_MENU_ITEMS.forEach((item) => {
+    const path = normalizePath(item.path)
+    if (PROTECTED_MENU_PATHS.includes(path) && !mergedItems.some((current) => normalizePath(current.path ?? current.dictValue ?? current.value) === path)) {
+      mergedItems.push(item)
+    }
+  })
+
+  return mergedItems
     .map(normalizeMenuItem)
     .filter((item) => item.path)
     .filter((item) => !item.hidden)
