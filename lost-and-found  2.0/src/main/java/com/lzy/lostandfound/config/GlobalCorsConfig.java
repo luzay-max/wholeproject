@@ -13,13 +13,14 @@ public class GlobalCorsConfig {
     public CorsFilter corsFilter() {
         // 1. 创建CORS配置对象
         CorsConfiguration config = new CorsConfiguration();
-        // 允许的源（必须是前端实际的源，不带路径）
-        // 开发环境
-        config.addAllowedOrigin("http://localhost:5173");
-        // 生产环境 - 宝塔 Nginx
-        config.addAllowedOrigin("http://47.110.144.114");
-        // 备用：也允许直接用 IP:端口 访问
-        config.addAllowedOrigin("http://47.110.144.114:80");
+        // 允许浏览器从本地开发、Docker 端口映射和线上同机反向代理发起跨域请求。
+        // 使用 pattern 而不是固定 origin，避免前端端口切到 18081/5174 等场景时直接被 Spring 拦成 403。
+        config.addAllowedOriginPattern("http://localhost:*");
+        config.addAllowedOriginPattern("http://127.0.0.1:*");
+        config.addAllowedOriginPattern("http://47.110.144.114:*");
+        config.addAllowedOriginPattern("https://47.110.144.114:*");
+        config.addAllowedOriginPattern("http://47.110.144.114");
+        config.addAllowedOriginPattern("https://47.110.144.114");
         // 允许携带cookie（前后端需一致）
         config.setAllowCredentials(true);
         // 允许的请求方法（包含所有方法，包括OPTIONS）
