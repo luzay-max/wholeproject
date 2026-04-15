@@ -178,6 +178,11 @@
                     <h4>{{ item.name }}</h4>
                     <p><el-icon><Location /></el-icon>{{ item.location }}</p>
                     <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
+                    <div class="publish-actions">
+                      <el-button size="small" @click.stop="editPublish(item, 'lost')">编辑</el-button>
+                      <el-button size="small" type="success" plain :disabled="item.status !== 'APPROVED'" @click.stop="markPublishResolved(item, 'lost')">标记完成</el-button>
+                      <el-button size="small" type="danger" plain @click.stop="removePublish(item, 'lost')">删除</el-button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -218,6 +223,11 @@
                     <h4>{{ item.name }}</h4>
                     <p><el-icon><Location /></el-icon>{{ item.location }}</p>
                     <p><el-icon><Clock /></el-icon>{{ formatDate(item.publishTime) }}</p>
+                    <div class="publish-actions">
+                      <el-button size="small" @click.stop="editPublish(item, 'find')">编辑</el-button>
+                      <el-button size="small" type="success" plain :disabled="item.status !== 'APPROVED'" @click.stop="markPublishResolved(item, 'find')">标记完成</el-button>
+                      <el-button size="small" type="danger" plain @click.stop="removePublish(item, 'find')">删除</el-button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -286,13 +296,13 @@
 
 <script>
 import { ref, reactive, computed, onMounted, watch } from 'vue';
-import { useRouter } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { useRoute, useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { User, Phone, Message, Document, Search, Bell, Location, Clock, Edit, Close, Camera, Check, Plus, ArrowRight, CircleCheck, Medal, Star, Calendar, Setting, UserFilled, Postcard, OfficeBuilding, DocumentCopy, Picture, View, Lock, Delete } from '@element-plus/icons-vue';
 import { getUserInfo, updateUserInfo, updateAvatar } from '../api/userApi';
 import { resetPassword } from '../api/authApi';
-import { getUserLostList } from '../api/lostApi';
-import { getUserFindList } from '../api/findApi';
+import { getUserLostList, deleteLostInfo, updateLostStatus } from '../api/lostApi';
+import { getUserFindList, deleteFindInfo, updateFindStatus } from '../api/findApi';
 import { useUserStore } from '../store/userStore';
 import { getDicts } from '../api/system/dict/data';
 import { validatePassword } from '../utils/validators';
@@ -303,6 +313,7 @@ export default {
   name: 'UserCenterPage',
   components: { User, Phone, Message, Document, Search, Bell, Location, Clock, Edit, Close, Camera, Check, Plus, ArrowRight, CircleCheck, Calendar, Setting, UserFilled, Postcard, OfficeBuilding, DocumentCopy, Picture, View, Lock, Delete, DictTag },
   setup() {
+    const route = useRoute();
     const router = useRouter();
     const userStore = useUserStore();
     const loading = ref(false);
@@ -573,8 +584,59 @@ export default {
 
     const viewDetail = (id, type) => router.push({ name: 'InfoDetailPage', params: { id, type } });
     const navigateToPublish = (type) => router.push({ name: type === 'lost' ? 'LostPublish' : 'FindPublish' });
+    const editPublish = (item, type) => {
+      router.push({
+        name: type === 'lost' ? 'LostPublish' : 'FindPublish',
+        query: { editId: item.id }
+      });
+    };
+
+    const removePublish = async (item, type) => {
+      try {
+        await ElMessageBox.confirm(
+          `确认删除“${item.name}”吗？删除后不可恢复。`,
+          '删除确认',
+          { type: 'warning' }
+        );
+        if (type === 'lost') {
+          await deleteLostInfo(item.id);
+          await fetchLostPublishes();
+        } else {
+          await deleteFindInfo(item.id);
+          await fetchFindPublishes();
+        }
+        ElMessage.success('删除成功');
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        ElMessage.error(error?.message || '删除失败');
+      }
+    };
+
+    const markPublishResolved = async (item, type) => {
+      try {
+        await ElMessageBox.confirm(
+          `确认将“${item.name}”标记为${type === 'lost' ? '已找回' : '已认领'}吗？`,
+          '状态更新',
+          { type: 'warning' }
+        );
+        if (type === 'lost') {
+          await updateLostStatus({ id: item.id, status: 'SOLVED' });
+          await fetchLostPublishes();
+        } else {
+          await updateFindStatus({ id: item.id, status: 'SOLVED' });
+          await fetchFindPublishes();
+        }
+        ElMessage.success('状态更新成功');
+      } catch (error) {
+        if (error === 'cancel' || error === 'close') return;
+        ElMessage.error(error?.message || '状态更新失败');
+      }
+    };
     
     onMounted(() => {
+      if (route.query.tab === 'publishes') {
+        activeTab.value = 'publishes';
+      }
       loadUserInfo();
       loadPublishes();
       getDicts('sys_user_role').then(res => user_role.value = res.data);
@@ -632,6 +694,9 @@ export default {
       handleChangePassword,
       getItemImage,
       viewDetail,
+      editPublish,
+      removePublish,
+      markPublishResolved,
       navigateToPublish,
       defaultAvatar
     };
@@ -1153,6 +1218,13 @@ export default {
   gap: 6px;
   font-size: 12px;
   color: var(--color-text-tertiary);
+}
+
+.publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
 }
 
 .settings-list {

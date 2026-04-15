@@ -404,9 +404,18 @@ public class FindInfoController {
     @CacheEvict(cacheNames = "FindListCache", allEntries = true)
     public Result updateStatus(@Valid @RequestBody Status status) {
         try {
+            Map<String, Object> map = ThreadLocalUtil.get();
+            if (map == null || map.get("id") == null) {
+                return Result.forbidden("未登录或登录信息失效");
+            }
+            String userId = map.get("id").toString();
+
             FindInfo findInfo = findInfoService.getById(status.getId());
             if (findInfo == null) {
                 return Result.error("信息不存在");
+            }
+            if (!userId.equals(findInfo.getUserId())) {
+                return Result.forbidden("无权限更新此信息状态");
             }
 
             String normalizedStatus = status.getStatus() != null ? status.getStatus().toUpperCase() : null;
@@ -415,9 +424,7 @@ public class FindInfoController {
             findInfoService.updateById(findInfo);
 
             // ✅ 记录用户活动日志
-            Map<String, Object> map = ThreadLocalUtil.get();
-            if (map != null && map.get("id") != null) {
-                String userId = map.get("id").toString();
+            if (map.get("id") != null) {
                 Activities act = new Activities();
                 act.setId(UUID.randomUUID().toString());
                 act.setUserId(userId);

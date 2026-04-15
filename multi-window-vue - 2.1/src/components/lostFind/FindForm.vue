@@ -6,9 +6,9 @@
         <div class="header-content">
           <h1 class="page-title">
             <span class="title-icon">📢</span>
-            发布招领信息
+            {{ formTitle }}
           </h1>
-          <p class="page-subtitle">帮助失物找到主人，共建和谐校园</p>
+          <p class="page-subtitle">{{ formSubtitle }}</p>
         </div>
       </div>
 
@@ -18,11 +18,11 @@
           <div class="card-header">
             <h3 class="card-title">
               <el-icon><DocumentAdd /></el-icon>
-              招领信息填写
+              {{ cardTitle }}
             </h3>
             <div class="card-tips">
               <el-icon><InfoFilled /></el-icon>
-              <span>请如实填写信息，确保能够联系到您</span>
+              <span>{{ cardTip }}</span>
             </div>
           </div>
         </template>
@@ -275,7 +275,7 @@
               class="submit-btn"
             >
               <el-icon><Promotion /></el-icon>
-              发布招领信息
+              {{ submitButtonText }}
             </el-button>
             <el-button 
               @click="handleReset" 
@@ -305,7 +305,7 @@
 </template>
 
 <script>
-import { h, ref, reactive } from 'vue';
+import { h, ref, reactive, computed, watch } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { 
   DocumentAdd, 
@@ -326,7 +326,7 @@ import {
   Promotion, 
   Refresh 
 } from '@element-plus/icons-vue';
-import { publishFind } from '../../api/findApi';
+import { publishFind, updateFindInfo } from '../../api/findApi';
 import { suggestDescription } from '../../api/aiApi';
 import { getToken } from '../../utils/authUtil';
 import { createClickGuard } from '../../utils/clickGuard';
@@ -334,6 +334,17 @@ import DictSelect from '../Dict/DictSelect.vue';
 
 export default {
   name: 'FindForm',
+  props: {
+    initialData: {
+      type: Object,
+      default: null
+    },
+    submitMode: {
+      type: String,
+      default: 'publish',
+      validator: (value) => ['publish', 'edit'].includes(value)
+    }
+  },
   components: {
     DictSelect,
     DocumentAdd,  
@@ -354,7 +365,7 @@ export default {
     Promotion, 
     Refresh
   },
-  emits: ['submit-success', 'publish-success'],
+  emits: ['submit-success', 'publish-success', 'update-success'],
   setup(props, { emit }) {
     const findFormRef = ref(null);
     const loading = ref(false);
@@ -364,6 +375,16 @@ export default {
     const fileList = ref([]);
     const clickGuard = createClickGuard(800);
     const token = getToken();
+    const isEditMode = computed(() => props.submitMode === 'edit');
+    const formTitle = computed(() => isEditMode.value ? '编辑招领信息' : '发布招领信息');
+    const formSubtitle = computed(() => isEditMode.value
+      ? '更新招领信息后将重新进入审核流程'
+      : '帮助失物找到主人，共建和谐校园');
+    const cardTitle = computed(() => isEditMode.value ? '招领信息编辑' : '招领信息填写');
+    const cardTip = computed(() => isEditMode.value
+      ? '仅可修改本人发布的信息，提交后将重新审核'
+      : '请如实填写信息，确保能够联系到您');
+    const submitButtonText = computed(() => isEditMode.value ? '保存招领信息' : '发布招领信息');
 
     // 限制日期不能超过当前时间
     const disabledDate = (time) => {
@@ -525,6 +546,9 @@ export default {
         ...findForm,
         images: JSON.stringify(findForm.images)
       };
+      if (isEditMode.value && props.initialData?.id) {
+        payload.id = props.initialData.id;
+      }
       if (findForm.contactName) {
         payload.contactName = findForm.contactName;
         payload.contact_name = findForm.contactName;
@@ -532,6 +556,48 @@ export default {
         delete payload.contactName;
       }
       return payload;
+    };
+
+    const normalizeTimestamp = (value) => {
+      if (!value && value !== 0) return null;
+      if (typeof value === 'number') return String(value);
+      if (typeof value === 'string' && /^\d{13}$/.test(value)) return value;
+      const date = new Date(value);
+      return Number.isNaN(date.getTime()) ? null : String(date.getTime());
+    };
+
+    const parseImageList = (images) => {
+      if (!images) return [];
+      if (Array.isArray(images)) return images.filter(Boolean);
+      if (typeof images === 'string') {
+        try {
+          const parsed = JSON.parse(images);
+          return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch {
+          return [];
+        }
+      }
+      return [];
+    };
+
+    const applyInitialData = (data) => {
+      const images = parseImageList(data?.images);
+      Object.assign(findForm, {
+        name: data?.name || '',
+        type: data?.type || '',
+        location: data?.location || '',
+        foundTime: normalizeTimestamp(data?.findTime || data?.foundTime),
+        description: data?.description || '',
+        contactName: data?.contactName || data?.contactInfo || '',
+        contactPhone: data?.contactPhone || '',
+        contactEmail: data?.contactEmail || '',
+        images
+      });
+      fileList.value = images.map((url, index) => ({
+        name: `image-${index + 1}`,
+        url
+      }));
+      findFormRef.value?.clearValidate();
     };
 
     const formatTimeValue = (value) => {
@@ -718,19 +784,30 @@ export default {
 
         loading.value = true;
         try {
-          const res = await publishFind(buildSubmitPayload());
+          const payload = buildSubmitPayload();
+          const res = isEditMode.value
+            ? await updateFindInfo(payload)
+            : await publishFind(payload);
 
-          ElMessage.success({
-            message: '招领信息发布成功，等待审核通过后将显示在列表中',
-            duration: 5000,
-            showClose: true
-          });
+          ElMessage.success(isEditMode.value
+            ? '招领信息更新成功，等待重新审核'
+            : {
+                message: '招领信息发布成功，等待审核通过后将显示在列表中',
+                duration: 5000,
+                showClose: true
+              });
           emit('submit-success', res.data);
-          emit('publish-success', res.data);
-
-          handleReset();
+          if (isEditMode.value) {
+            emit('update-success', {
+              id: payload.id,
+              ...payload
+            });
+          } else {
+            emit('publish-success', res.data);
+            handleReset();
+          }
         } catch (error) {
-          ElMessage.error('发布失败：' + (error?.message || '请稍后重试'));
+          ElMessage.error((isEditMode.value ? '更新失败：' : '发布失败：') + (error?.message || '请稍后重试'));
         } finally {
           loading.value = false;
         }
@@ -739,13 +816,37 @@ export default {
 
     // 重置表单
     const handleReset = () => {
+      if (isEditMode.value && props.initialData) {
+        applyInitialData(props.initialData);
+        return;
+      }
       if (findFormRef.value) findFormRef.value.resetFields();
       findForm.images = [];
+      fileList.value = [];
     };
+
+    watch(
+      () => props.initialData,
+      (data) => {
+        if (data) {
+          applyInitialData(data);
+          return;
+        }
+        if (!isEditMode.value) {
+          handleReset();
+        }
+      },
+      { immediate: true }
+    );
 
     return {
       findFormRef,
       loading,
+      formTitle,
+      formSubtitle,
+      cardTitle,
+      cardTip,
+      submitButtonText,
       aiLoading,
       findForm,
       rules,

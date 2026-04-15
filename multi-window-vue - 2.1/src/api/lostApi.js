@@ -36,6 +36,23 @@ export const getLostDetail = (id) => {
   });
 };
 
+// 更新失物信息
+export const updateLostInfo = (data) => {
+  return request({
+    url: '/lost',
+    method: 'put',
+    data
+  });
+};
+
+// 删除失物信息
+export const deleteLostInfo = (id) => {
+  return request({
+    url: `/lost/${id}`,
+    method: 'delete'
+  });
+};
+
 // 更新失物信息状态
 export const updateLostStatus = (data) => {
   return request({
@@ -77,4 +94,3 @@ export const getHotFindList = () => {
     method: 'get'
   });
 };
-

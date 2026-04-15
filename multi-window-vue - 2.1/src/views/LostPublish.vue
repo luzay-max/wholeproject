@@ -1,19 +1,27 @@
 ﻿<template>
   <div class="publish-page">
     <div class="publish-header">
-      <h2 class="page-title">发布失物信息</h2>
+      <h2 class="page-title">{{ isEditMode ? '编辑失物信息' : '发布失物信息' }}</h2>
     </div>
     <div class="publish-content">
-      <LostForm @publish-success="handlePublishSuccess" />
+      <LostForm
+        v-loading="loadingEdit"
+        :submit-mode="isEditMode ? 'edit' : 'publish'"
+        :initial-data="editData"
+        @publish-success="handlePublishSuccess"
+        @update-success="handleUpdateSuccess"
+      />
     </div>
   </div>
 </template>
 
 <script>
-import { useRouter } from 'vue-router';
+import { computed, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useInfoStore } from '../store/infoStore';
 import { ElMessage } from 'element-plus';
 import LostForm from '../components/lostFind/LostForm.vue';
+import { getLostDetail } from '../api/lostApi';
 
 export default {
   name: 'LostPublish',
@@ -21,8 +29,30 @@ export default {
     LostForm
   },
   setup() {
+    const route = useRoute();
     const router = useRouter();
     const infoStore = useInfoStore();
+    const editData = ref(null);
+    const loadingEdit = ref(false);
+    const editId = computed(() => route.query.editId || '');
+    const isEditMode = computed(() => Boolean(editId.value));
+
+    const loadEditDetail = async () => {
+      if (!editId.value) {
+        editData.value = null;
+        return;
+      }
+      try {
+        loadingEdit.value = true;
+        const res = await getLostDetail(editId.value);
+        editData.value = res?.data || null;
+      } catch (error) {
+        ElMessage.error(error?.message || '加载待编辑信息失败');
+        router.replace({ name: 'UserCenterPage', query: { tab: 'publishes' } });
+      } finally {
+        loadingEdit.value = false;
+      }
+    };
     
     const handlePublishSuccess = async (data) => {await infoStore.fetchActivities();
       const infoId = data?.id || data?.data?.id;
@@ -35,9 +65,27 @@ export default {
         params: { id: infoId, type: 'lost' }
       });
     };
+
+    const handleUpdateSuccess = async () => {
+      await infoStore.fetchActivities();
+      if (!editId.value) {
+        router.push({ name: 'UserCenterPage', query: { tab: 'publishes' } });
+        return;
+      }
+      router.replace({
+        name: 'InfoDetailPage',
+        params: { id: editId.value, type: 'lost' }
+      });
+    };
+
+    watch(() => route.query.editId, loadEditDetail, { immediate: true });
     
     return {
-      handlePublishSuccess
+      isEditMode,
+      editData,
+      loadingEdit,
+      handlePublishSuccess,
+      handleUpdateSuccess
     };
   }
 };

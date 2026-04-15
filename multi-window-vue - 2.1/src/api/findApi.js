@@ -35,6 +35,23 @@ export const getFindDetail = (id) => {
   });
 };
 
+// 更新招领信息
+export const updateFindInfo = (data) => {
+  return request({
+    url: '/find',
+    method: 'put',
+    data
+  });
+};
+
+// 删除招领信息
+export const deleteFindInfo = (id) => {
+  return request({
+    url: `/find/${id}`,
+    method: 'delete'
+  });
+};
+
 // 更新招领信息状态
 export const updateFindStatus = (data) => {
   return request({

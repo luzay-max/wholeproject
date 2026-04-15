@@ -378,9 +378,18 @@ public class LostInfoController {
     @Transactional
     public Result updateStatus(@Valid @RequestBody Status status) {
         try {
+            Map<String, Object> map = ThreadLocalUtil.get();
+            if (map == null || map.get("id") == null) {
+                return Result.forbidden("未登录或登录信息失效");
+            }
+            String userId = map.get("id").toString();
+
             LostInfo lostInfo = lostInfoService.getById(status.getId());
             if (lostInfo == null) {
                 return Result.error("信息不存在");
+            }
+            if (!userId.equals(lostInfo.getUserId())) {
+                return Result.forbidden("无权限更新此信息状态");
             }
 
             String normalizedStatus = status.getStatus() != null ? status.getStatus().toUpperCase() : null;
@@ -389,9 +398,7 @@ public class LostInfoController {
             lostInfoService.updateById(lostInfo);
 
             // ✅ 插入活动记录
-            Map<String, Object> map = ThreadLocalUtil.get();
-            if (map != null && map.get("id") != null) {
-                String userId = map.get("id").toString();
+            if (map.get("id") != null) {
                 Activities act = new Activities();
                 act.setId(UUID.randomUUID().toString());
                 act.setUserId(userId);
