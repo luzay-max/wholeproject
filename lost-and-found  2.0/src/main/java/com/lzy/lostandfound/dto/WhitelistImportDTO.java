@@ -13,4 +13,7 @@ public class WhitelistImportDTO {
 
     @ExcelProperty("学院")
     private String college;
+
+    @ExcelProperty("身份")
+    private String role;
 }

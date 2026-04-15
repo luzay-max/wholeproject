@@ -20,6 +20,7 @@ public class StudentWhitelist implements Serializable {
     private String studentId;
     private String name;
     private String college;
+    private String role;
 
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;

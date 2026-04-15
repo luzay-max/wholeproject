@@ -1,5 +1,5 @@
 <template>
-  <header class="navbar">
+  <header class="navbar" v-bind="$attrs">
     <div class="navbar-inner">
       <!-- Logo -->
       <div class="logo" @click="navigateTo('/')">
@@ -187,6 +187,7 @@ import { getNoticeUnreadCount } from '../../api/noticeApi';
 
 export default {
   name: 'Navbar',
+  inheritAttrs: false,
   components: {
     ArrowDown,
     Menu,

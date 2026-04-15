@@ -50,6 +50,11 @@
           <el-table-column prop="studentId" label="学号" width="180" sortable />
           <el-table-column prop="name" label="姓名" width="120" />
           <el-table-column prop="college" label="学院" width="180" />
+          <el-table-column prop="role" label="身份" width="120">
+            <template #default="scope">
+              <DictTag :options="roleOptions" :value="scope.row.role" />
+            </template>
+          </el-table-column>
           <el-table-column v-if="!isMobile" prop="createTime" label="导入时间" sortable width="180">
             <template #default="scope">
               {{ formatDate(scope.row.createTime) }}
@@ -114,7 +119,7 @@
           </div>
           <template #tip>
             <div class="el-upload__tip">
-              请上传 .xlsx 或 .xls 格式的文件，
+              请上传 .xlsx 或 .xls 格式的文件，模板需包含身份列（`STUDENT`/`TEACHER`），
               <el-link type="primary" @click="downloadTemplate">下载模板</el-link>
             </div>
           </template>
@@ -147,6 +152,14 @@
         <el-form-item label="学院" prop="college">
           <el-input v-model="addForm.college" placeholder="请输入学院" />
         </el-form-item>
+        <el-form-item label="身份" prop="role">
+          <DictSelect
+            v-model="addForm.role"
+            :options="roleOptions"
+            placeholder="请选择身份"
+            :clearable="false"
+          />
+        </el-form-item>
       </el-form>
       <template #footer>
         <span class="dialog-footer">
@@ -171,7 +184,10 @@ import {
   updateWhitelistItem,
   downloadWhitelistTemplate
 } from '../../api/adminApi';
+import { getDicts } from '../../api/system/dict/data';
 import dayjs from 'dayjs';
+import DictSelect from '../../components/Dict/DictSelect.vue';
+import DictTag from '../../components/Dict/DictTag.vue';
 
 const loading = ref(false);
 const whitelist = ref([]);
@@ -199,12 +215,18 @@ const addFormRef = ref(null);
 const addForm = reactive({
   studentId: '',
   name: '',
-  college: ''
+  college: '',
+  role: 'STUDENT'
 });
 const addRules = {
   studentId: [{ required: true, message: '请输入学号', trigger: 'blur' }],
-  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }]
+  name: [{ required: true, message: '请输入姓名', trigger: 'blur' }],
+  role: [{ required: true, message: '请选择身份', trigger: 'change' }]
 };
+const roleOptions = ref([
+  { label: '学生', value: 'STUDENT' },
+  { label: '教师', value: 'TEACHER' }
+]);
 
 // 获取列表数据
 const fetchData = async () => {
@@ -235,6 +257,13 @@ const updateViewportState = () => {
 onMounted(() => {
   updateViewportState();
   window.addEventListener('resize', updateViewportState);
+  getDicts('sys_user_role').then((res) => {
+    const options = Array.isArray(res?.data) ? res.data : [];
+    roleOptions.value = options.filter(item => {
+      const value = String(item.value || item.dictValue || '').toUpperCase();
+      return value === 'STUDENT' || value === 'TEACHER';
+    });
+  }).catch(() => {});
   fetchData();
 });
 
@@ -379,6 +408,7 @@ const handleAdd = () => {
   addForm.studentId = '';
   addForm.name = '';
   addForm.college = '';
+  addForm.role = 'STUDENT';
   addDialogVisible.value = true;
 };
 
@@ -389,6 +419,7 @@ const handleEdit = (row) => {
   addForm.studentId = row.studentId;
   addForm.name = row.name;
   addForm.college = row.college || '';
+  addForm.role = row.role || 'STUDENT';
   addDialogVisible.value = true;
 };
 

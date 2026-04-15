@@ -152,6 +152,14 @@ export default {
 
         try {
           await formRef.value.validate();
+        } catch (error) {
+          if (error !== false) {
+            ElMessage.warning('请先填写完整的登录信息');
+          }
+          return;
+        }
+
+        try {
           loading.value = true;
 
           await userStore.login({
@@ -172,9 +180,7 @@ export default {
 
           emit('login-success');
         } catch (error) {
-          if (error !== false) {
-            doFetchCaptcha();
-          }
+          await doFetchCaptcha();
         } finally {
           loading.value = false;
         }

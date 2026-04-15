@@ -83,6 +83,44 @@ public class AdminController {
         return role != null && "ADMIN".equalsIgnoreCase(role);
     }
 
+    private String normalizeWhitelistRole(String role) {
+        if (!StringUtils.hasText(role)) {
+            return "";
+        }
+        String normalized = role.trim().toUpperCase();
+        if ("学生".equals(role.trim())) {
+            return "STUDENT";
+        }
+        if ("教师".equals(role.trim()) || "老师".equals(role.trim())) {
+            return "TEACHER";
+        }
+        if ("管理员".equals(role.trim())) {
+            return "ADMIN";
+        }
+        return normalized;
+    }
+
+    private boolean isRegistrableWhitelistRole(String role) {
+        return "STUDENT".equals(role) || "TEACHER".equals(role);
+    }
+
+    private Result validateAndNormalizeWhitelist(StudentWhitelist whitelist) {
+        if (!StringUtils.hasText(whitelist.getStudentId()) || !StringUtils.hasText(whitelist.getName())) {
+            return Result.error("学号和姓名不能为空");
+        }
+
+        String role = normalizeWhitelistRole(whitelist.getRole());
+        if (!isRegistrableWhitelistRole(role)) {
+            return Result.error("白名单身份只能设置为学生或教师，管理员身份只能后续赋予");
+        }
+
+        whitelist.setStudentId(whitelist.getStudentId().trim());
+        whitelist.setName(whitelist.getName().trim());
+        whitelist.setCollege(StringUtils.hasText(whitelist.getCollege()) ? whitelist.getCollege().trim() : null);
+        whitelist.setRole(role);
+        return null;
+    }
+
     @GetMapping("/admin/honor/periods")
     public Result honorPeriods(@RequestParam(defaultValue = "1") Integer page,
                                @RequestParam(defaultValue = "8") Integer pageSize,
@@ -2743,8 +2781,9 @@ public class AdminController {
     @PostMapping("/admin/whitelist")
     public Result addWhitelist(@RequestBody StudentWhitelist whitelist) {
         try {
-            if (whitelist.getStudentId() == null || whitelist.getName() == null) {
-                return Result.error("学号和姓名不能为空");
+            Result validationResult = validateAndNormalizeWhitelist(whitelist);
+            if (validationResult != null) {
+                return validationResult;
             }
             // 查重
             long count = studentWhitelistService.count(new LambdaQueryWrapper<StudentWhitelist>()
@@ -2769,6 +2808,11 @@ public class AdminController {
             StudentWhitelist existing = studentWhitelistService.getById(id);
             if (existing == null) {
                 return Result.error("白名单记录不存在");
+            }
+
+            Result validationResult = validateAndNormalizeWhitelist(whitelist);
+            if (validationResult != null) {
+                return validationResult;
             }
             
             // 如果修改了学号，需要查重
@@ -2810,6 +2854,7 @@ public class AdminController {
         example.setStudentId("20210001");
         example.setName("张三");
         example.setCollege("计算机学院");
+        example.setRole("STUDENT");
         list.add(example);
         
         EasyExcel.write(response.getOutputStream(), WhitelistImportDTO.class)
@@ -2845,6 +2890,11 @@ public class AdminController {
                 if (dto.getStudentId() == null || dto.getName() == null) {
                     continue;
                 }
+
+                String role = normalizeWhitelistRole(dto.getRole());
+                if (!isRegistrableWhitelistRole(role)) {
+                    continue;
+                }
                 
                 // 查重
                 long count = studentWhitelistService.count(new LambdaQueryWrapper<StudentWhitelist>()
@@ -2852,9 +2902,10 @@ public class AdminController {
                         
                 if (count == 0) {
                     StudentWhitelist sw = new StudentWhitelist();
-                    sw.setStudentId(dto.getStudentId());
-                    sw.setName(dto.getName());
-                    sw.setCollege(dto.getCollege());
+                    sw.setStudentId(dto.getStudentId().trim());
+                    sw.setName(dto.getName().trim());
+                    sw.setCollege(StringUtils.hasText(dto.getCollege()) ? dto.getCollege().trim() : null);
+                    sw.setRole(role);
                     sw.setCreateTime(LocalDateTime.now());
                     sw.setUpdateTime(LocalDateTime.now());
                     sw.setDeleted(0);

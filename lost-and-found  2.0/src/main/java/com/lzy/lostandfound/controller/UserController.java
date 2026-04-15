@@ -105,6 +105,17 @@ public class UserController {
              return Result.error("不在白名单中");
          }
 
+         String whitelistRole = wl.getRole() == null ? "" : wl.getRole().trim().toUpperCase();
+         if (whitelistRole.isEmpty()) {
+             return Result.error("白名单身份未配置，请联系管理员");
+         }
+         if ("ADMIN".equals(whitelistRole)) {
+             return Result.error("管理员身份只能由系统管理员赋予");
+         }
+         if (!"STUDENT".equals(whitelistRole) && !"TEACHER".equals(whitelistRole)) {
+             return Result.error("白名单身份无效，请联系管理员");
+         }
+
          if (existsByColumn("username", username)) {
              return Result.error("用户名已存在");
          }
@@ -131,7 +142,7 @@ public class UserController {
          user.setStudentId(studentId);
          user.setCollege(wl.getCollege());
          user.setStatus(0);
-         user.setRole(request.getRole().toUpperCase());
+         user.setRole(whitelistRole);
          user.setCreateTime(LocalDateTime.now());
          user.setUpdateTime(LocalDateTime.now());
 

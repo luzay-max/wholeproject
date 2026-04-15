@@ -39,7 +39,4 @@ public class RegisterRequest {
     @Pattern(regexp = "^[0-9A-Za-z]{4,20}$", message = "invalid studentId")
     private String studentId;
 
-    @NotBlank(message = "role required")
-    @Pattern(regexp = "(?i)^(STUDENT|TEACHER)$", message = "invalid role")
-    private String role;
 }

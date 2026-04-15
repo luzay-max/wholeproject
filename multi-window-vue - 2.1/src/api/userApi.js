@@ -20,7 +20,8 @@ export const login = async (data) => {
     url: 'auth/login',
     method: 'post',
     data: params,
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    showErrorMessage: true
   
   });
 };

@@ -131,21 +131,8 @@
       </el-form-item>
     </div>
 
-    <div class="form-row">
-      <el-form-item label="身份" prop="role" class="form-col">
-        <DictSelect
-          v-model="form.role"
-          dict-type="sys_user_role"
-          placeholder="请选择"
-          class="custom-select"
-          @keyup.enter="handleSubmit"
-        >
-          <template #option="{ item }">
-            <span>{{ item.label || item.dictLabel }}</span>
-            <span class="option-hint" v-if="item.remark">{{ item.remark }}</span>
-          </template>
-        </DictSelect>
-      </el-form-item>
+    <div class="register-tip">
+      注册身份由白名单决定，管理员身份不能直接注册。
     </div>
 
     <div class="agreement-row">
@@ -182,11 +169,9 @@ import { User, Lock, CircleCheck, Phone, Message, Postcard } from '@element-plus
 import { register, checkUsername } from '../../api/userApi';
 import { validatePhone, validateEmail, validateStudentId, validatePassword, nameRegex } from '../../utils/validators';
 import { createClickGuard } from '../../utils/clickGuard';
-import DictSelect from '../Dict/DictSelect.vue';
 
 export default {
   name: 'RegisterForm',
-  components: { DictSelect },
   emits: ['register-success', 'to-login'],
   setup(props, { emit }) {
     const formRef = ref(null);
@@ -203,7 +188,6 @@ export default {
       email: '',
       name: '',
       studentId: '',
-      role: 'STUDENT',
       agreeTerms: false
     });
 
@@ -311,9 +295,6 @@ export default {
           },
           trigger: 'blur'
         }
-      ],
-      role: [
-        { required: true, message: '请选择身份', trigger: 'change' }
       ]
     };
 
@@ -377,8 +358,7 @@ export default {
   margin-bottom: 6px;
 }
 
-.custom-input :deep(.el-input__wrapper),
-.custom-select :deep(.el-input__wrapper) {
+.custom-input :deep(.el-input__wrapper) {
   border-radius: 12px;
 }
 
@@ -394,10 +374,11 @@ export default {
   font-size: 14px;
 }
 
-.option-hint {
-  display: block;
-  font-size: 11px;
-  color: var(--color-text-tertiary);
+.register-tip {
+  margin-top: -2px;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
 }
 
 .agreement-row {

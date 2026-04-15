@@ -100,16 +100,35 @@
           />
         </el-form-item>
         <el-form-item label="凭证图片">
-          <el-input
-            v-model="proofForm.proofImages"
-            placeholder='可选，多个图片URL可传JSON数组，如 ["url1","url2"]'
-          />
+          <el-upload
+            :headers="{ Authorization: `${token}` }"
+            action="/api/user/uploadImage"
+            name="file"
+            list-type="picture-card"
+            :on-success="handleProofUploadSuccess"
+            :on-error="handleProofUploadError"
+            :on-remove="handleProofRemove"
+            :on-preview="handleProofPreview"
+            :limit="6"
+            multiple
+            class="proof-upload"
+            :file-list="proofFileList"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-upload>
+          <div class="proof-upload-tip">最多上传 6 张图片，用于辅助证明认领身份。</div>
         </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="proofDialogVisible = false">取消</el-button>
         <el-button type="primary" @click="submitProof">提交</el-button>
       </template>
+    </el-dialog>
+
+    <el-dialog v-model="proofPreviewVisible" title="凭证图片预览" width="640px">
+      <div class="proof-preview-wrap">
+        <img :src="proofPreviewImage" alt="凭证图片预览" class="proof-preview-image" />
+      </div>
     </el-dialog>
 
     <el-dialog v-model="compareDialogVisible" title="凭证与信息对比" width="760px">
@@ -159,6 +178,7 @@
 import { computed, onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Plus } from '@element-plus/icons-vue';
 import {
   getMyClaimApplications,
   getMyClaimPendingConfirm,
@@ -168,9 +188,11 @@ import {
 } from '../api/claimApi';
 import { getLostDetail } from '../api/lostApi';
 import { getFindDetail } from '../api/findApi';
+import { getToken } from '../utils/authUtil';
 
 const router = useRouter();
 const activeTab = ref('apply');
+const token = getToken();
 
 const applyList = ref([]);
 const confirmList = ref([]);
@@ -181,8 +203,11 @@ const proofDialogVisible = ref(false);
 const currentClaimId = ref('');
 const proofForm = reactive({
   proofText: '',
-  proofImages: ''
+  proofImages: []
 });
+const proofFileList = ref([]);
+const proofPreviewVisible = ref(false);
+const proofPreviewImage = ref('');
 const compareDialogVisible = ref(false);
 const compareClaim = ref(null);
 const compareItem = ref({});
@@ -232,8 +257,35 @@ const loadConfirmList = async () => {
 const openProofDialog = (row) => {
   currentClaimId.value = row.id;
   proofForm.proofText = '';
-  proofForm.proofImages = '';
+  proofForm.proofImages = [];
+  proofFileList.value = [];
   proofDialogVisible.value = true;
+};
+
+const handleProofUploadSuccess = (res, file) => {
+  const imageUrl = res?.data;
+  if (!imageUrl) {
+    ElMessage.error(res?.message || '图片上传失败');
+    return;
+  }
+  proofForm.proofImages.push(imageUrl);
+  file.url = imageUrl;
+  proofFileList.value = [...proofFileList.value, file];
+  ElMessage.success('图片上传成功');
+};
+
+const handleProofUploadError = () => {
+  ElMessage.error('图片上传失败');
+};
+
+const handleProofRemove = (file) => {
+  proofForm.proofImages = proofForm.proofImages.filter((url) => url !== file.url);
+  proofFileList.value = proofFileList.value.filter((item) => item.uid !== file.uid && item.url !== file.url);
+};
+
+const handleProofPreview = (file) => {
+  proofPreviewImage.value = file.url;
+  proofPreviewVisible.value = true;
 };
 
 const parseImages = (value) => {
@@ -271,7 +323,7 @@ const submitProof = async () => {
   }
   await submitClaimProof(currentClaimId.value, {
     proofText: proofForm.proofText,
-    proofImages: proofForm.proofImages
+    proofImages: proofForm.proofImages.length ? JSON.stringify(proofForm.proofImages) : ''
   });
   ElMessage.success('凭证提交成功');
   proofDialogVisible.value = false;
@@ -382,12 +434,30 @@ onMounted(() => {
   margin-top: 8px;
 }
 
+.proof-upload-tip {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
 .proof-images img {
   width: 100%;
   height: 120px;
   object-fit: cover;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
+}
+
+.proof-preview-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.proof-preview-image {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 8px;
 }
 
 @media (max-width: 768px) {
