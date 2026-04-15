@@ -36,17 +36,13 @@
               </span>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="/admin/dashboard">管理看板</el-dropdown-item>
-                  <el-dropdown-item command="/admin/info?tab=audit">信息审核</el-dropdown-item>
-                  <el-dropdown-item command="/admin/users">用户管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/info?tab=manage&type=lost">失物管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/info?tab=manage&type=find">招领管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/comments">评论管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/activities">活动日志</el-dropdown-item>
-                  <el-dropdown-item command="/admin/logs">操作日志管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/honor">光荣榜管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/whitelist">白名单管理</el-dropdown-item>
-                  <el-dropdown-item command="/admin/dict">字典管理</el-dropdown-item>
+                  <el-dropdown-item
+                    v-for="item in adminMenuItems"
+                    :key="item.path"
+                    :command="item.path"
+                  >
+                    {{ item.title }}
+                  </el-dropdown-item>
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
@@ -144,7 +140,7 @@
         <template v-else>
           <template v-if="userStore.isAdmin">
             <el-button
-              v-for="item in adminMenuItems"
+              v-for="item in adminMobileMenuItems"
               :key="item.path"
               text
               class="mobile-nav-item"
@@ -184,6 +180,7 @@ import { ArrowDown, Menu, User } from '@element-plus/icons-vue';
 import { useUserStore } from '../../store/userStore';
 import { logout } from '../../api/authApi';
 import { getNoticeUnreadCount } from '../../api/noticeApi';
+import { loadAdminConsoleMenu, useAdminConsoleMenu } from '../../utils/adminConsoleMenu';
 
 export default {
   name: 'Navbar',
@@ -199,6 +196,7 @@ export default {
     const userStore = useUserStore();
     const mobileMenuVisible = ref(false);
     const unreadCount = ref(0);
+    const { dropdownMenuItems, mobileMenuItems } = useAdminConsoleMenu();
     
     const menuItems = computed(() => {
       const items = [
@@ -210,19 +208,19 @@ export default {
       return items;
     });
 
-    const adminMenuItems = [
-      { title: '管理看板', path: '/admin/dashboard' },
-      { title: '信息审核', path: '/admin/info?tab=audit' },
-      { title: '用户管理', path: '/admin/users' },
-      { title: '失物管理', path: '/admin/info?tab=manage&type=lost' },
-      { title: '招领管理', path: '/admin/info?tab=manage&type=find' },
-      { title: '评论管理', path: '/admin/comments' },
-      { title: '活动日志', path: '/admin/activities' },
-      { title: '操作日志管理', path: '/admin/logs' },
-      { title: '光荣榜管理', path: '/admin/honor' },
-      { title: '白名单管理', path: '/admin/whitelist' },
-      { title: '字典管理', path: '/admin/dict' }
-    ];
+    const adminMenuItems = computed(() =>
+      dropdownMenuItems.value.map((item) => ({
+        title: item.label,
+        path: item.path
+      }))
+    );
+
+    const adminMobileMenuItems = computed(() =>
+      mobileMenuItems.value.map((item) => ({
+        title: item.label,
+        path: item.path
+      }))
+    );
 
     const publishMenuItems = [
       { title: '发布失物', path: '/lost/publish' },
@@ -285,6 +283,9 @@ export default {
     };
 
     onMounted(loadUnreadCount);
+    onMounted(() => {
+      loadAdminConsoleMenu();
+    });
     watch(() => route.fullPath, loadUnreadCount);
     watch(() => userStore.isLoggedIn, loadUnreadCount);
     
@@ -293,6 +294,7 @@ export default {
       userStore,
       menuItems,
       adminMenuItems,
+      adminMobileMenuItems,
       publishMenuItems,
       unreadCount,
       mobileMenuVisible,

@@ -19,41 +19,13 @@
             <el-icon><House /></el-icon>
             <span>返回首页</span>
           </el-menu-item>
-          <el-menu-item index="/admin/info">
-            <el-icon><List /></el-icon>
-            <span>信息管理中心</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/dashboard">
-            <el-icon><DataAnalysis /></el-icon>
-            <span>管理看板</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/users">
-            <el-icon><User /></el-icon>
-            <span>用户管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/whitelist">
-            <el-icon><DocumentChecked /></el-icon>
-            <span>白名单管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/dict">
-            <el-icon><Collection /></el-icon>
-            <span>数据字典</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/comments">
-            <el-icon><ChatDotRound /></el-icon>
-            <span>评论管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/honor">
-            <el-icon><Trophy /></el-icon>
-            <span>光荣榜管理</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/activities">
-            <el-icon><Operation /></el-icon>
-            <span>活动日志</span>
-          </el-menu-item>
-          <el-menu-item index="/admin/logs">
-            <el-icon><Monitor /></el-icon>
-            <span>操作日志</span>
+          <el-menu-item
+            v-for="item in sidebarMenuItems"
+            :key="item.path"
+            :index="item.path"
+          >
+            <el-icon><component :is="getMenuIcon(item.icon)" /></el-icon>
+            <span>{{ item.label }}</span>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -128,12 +100,14 @@
 import { ref, watch, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '../../store/userStore';
-import { Platform, DataAnalysis, User, List, ChatDotRound, Trophy, Operation, DocumentChecked, Monitor, Menu, House } from '@element-plus/icons-vue';
+import { Platform, Menu, House } from '@element-plus/icons-vue';
+import { loadAdminConsoleMenu, useAdminConsoleMenu } from '../../utils/adminConsoleMenu';
 
 const route = useRoute();
 const router = useRouter();
 const userStore = useUserStore();
 const MOBILE_BREAKPOINT = 992;
+const { sidebarMenuItems, getMenuTitle, isBreadcrumbVisible, getMenuIcon } = useAdminConsoleMenu();
 
 const activeMenu = computed(() => route.path);
 const activeTab = ref(route.path);
@@ -147,12 +121,14 @@ const breadcrumbs = computed(() => {
   return route.matched
     .filter(item => item.path.startsWith('/admin'))
     .map(item => {
-      const title = item.meta?.title?.split(' - ')[0] || item.name || '';
+      const fallbackTitle = item.meta?.title?.split(' - ')[0] || item.name || '';
+      const title = getMenuTitle(item.path, fallbackTitle);
       return {
         ...item,
         title: String(title).trim()
       };
     })
+    .filter(item => isBreadcrumbVisible(item.path))
     .filter(item => item.title);
 });
 
@@ -164,7 +140,7 @@ const addTab = (route) => {
   const existingTab = tabs.value.find(tab => tab.path === path);
   if (!existingTab) {
     tabs.value.push({
-      title: meta.title?.split(' - ')[0] || name,
+      title: getMenuTitle(path, meta.title?.split(' - ')[0] || name),
       path: path,
       name: name
     });
@@ -229,7 +205,15 @@ watch(() => route.path, () => {
   }
 }, { immediate: true });
 
+watch(sidebarMenuItems, () => {
+  tabs.value = tabs.value.map(tab => ({
+    ...tab,
+    title: getMenuTitle(tab.path, tab.title)
+  }));
+}, { deep: true });
+
 onMounted(() => {
+  loadAdminConsoleMenu();
   updateViewportState();
   window.addEventListener('resize', updateViewportState);
   if (tabs.value.length === 0 && route.path.startsWith('/admin')) {
